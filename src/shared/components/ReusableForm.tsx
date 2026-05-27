@@ -32,6 +32,7 @@ type FormProps = {
   initialValues: Record<string, any>;
   onSubmit: (formData: Record<string, any>) => void;
   disabled?: boolean;
+  onFieldChange?: (id: string, value: any) => Partial<Record<string, any>> | void;
 };
 
 const ReusableForm: React.FC<FormProps> = ({
@@ -39,6 +40,7 @@ const ReusableForm: React.FC<FormProps> = ({
   initialValues,
   onSubmit,
   disabled = false,
+  onFieldChange,
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -48,9 +50,12 @@ const ReusableForm: React.FC<FormProps> = ({
   }, [initialValues]);
 
   const handleChange = (id: string, value: any) => {
+    // Call onFieldChange and get any extra field updates (e.g. auto-fill company internal no)
+    const extraUpdates = onFieldChange ? (onFieldChange(id, value) || {}) : {};
     setFormData((prev) => ({
       ...prev,
       [id]: value,
+      ...extraUpdates,
     }));
   };
 

@@ -4,7 +4,7 @@ import DynamicTable from "../../../shared/components/DynamicTable";
 import Modal from "../../../shared/components/Modal";
 import useAppDispatch from "../../../shared/hooks/useAppDispatch";
 import { useAppSelector } from "../../../shared/hooks/customHooks";
-import { addOrder, approveAdmin, approvelabMgmt, deliveredPOD, downloadPDF, addFineChemicalOrder, editFineChemicalOrder, editOrder, fetchOrders, fetchOrdersOD, getBudgetList, getGroupNames, orderedPOD, rejectAdmin, rejectlabMgmt } from "../dashboardSlice";
+import { addOrder, approveAdmin, approvelabMgmt, deliveredPOD, downloadPDF, addFineChemicalOrder, editFineChemicalOrder, editOrder, fetchOrders, fetchOrdersOD, getBudgetList, getCompanies, getGroupNames, orderedPOD, rejectAdmin, rejectlabMgmt } from "../dashboardSlice";
 import ReusableForm from "../../../shared/components/ReusableForm";
 import addOrderFormConfig from "../../../shared/config/addOrderFormConfig";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
@@ -202,6 +202,8 @@ const Orders = () => {
   // const [order, setOrder] = useState<any>(null);
   const [budget, setBudget] = useState<string[]>([]);
   const [groupOptions, setGroupOptions] = useState<string[]>([]);
+  const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
+  const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   console.log("groupOptions:", groupOptions);
   
   console.log("selectedOrder:", selectedOrder);
@@ -285,7 +287,7 @@ const fetchPodeptData = async () => {
         const result = await dispatch(getGroupNames()).unwrap();
         if (result.length > 0) {
           const groupNames = result.map((groupNames: any) => groupNames.groupName);
-  
+
           console.log("Fetched group names:", groupNames);
           setGroupOptions(groupNames);
         }
@@ -293,6 +295,19 @@ const fetchPodeptData = async () => {
         console.error("Failed to fetch group names:", error);
       }
     };
+
+  // ✅ Fetch companies for dropdown
+  const fetchCompanies = async () => {
+    try {
+      const result = await dispatch(getCompanies()).unwrap();
+      setCompanies(result);
+      setCompanyOptions(
+        result.map((c: any) => ({ label: c.companyName, key: c.companyName }))
+      );
+    } catch (error) {
+      console.error("Failed to fetch companies:", error);
+    }
+  };
 
   // Fetch orders
   useEffect(() => {
@@ -304,6 +319,7 @@ const fetchPodeptData = async () => {
 
     fetchBudget();
     fetchGroupNames();
+    fetchCompanies();
   }, [dispatch]);
 
 const normalizeKeysAndCleanData = (data: any) => { 
@@ -838,6 +854,19 @@ const handleAddFinechemicalt = async (formData: Record<string, any>) => {
 const isFineChemical = (order: any) =>
   order?.inventoryType === "fineChemicalInventory";
 
+// ✅ Auto-fill company internal number when company is selected
+const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string, any>> | void => {
+  if (id === "companyname" || id === "companyName") {
+    const selected = companies.find((c) => c.companyName === value);
+    if (selected) {
+      return {
+        companyinternalno: selected.companyNo,
+        companyInternalNo: selected.companyNo,
+      };
+    }
+  }
+};
+
   return (
     <>
       {error && <p>Error: {error}</p>}
@@ -877,17 +906,19 @@ const isFineChemical = (order: any) =>
 
       <Modal isOpen={isModalGIOpen} onClose={() => setIsModalGIOpen(false)} title={"Add General Inventory Order"}>
         <ReusableForm
-          formConfig={addOrderFormConfig(budget || [])}
+          formConfig={addOrderFormConfig(budget || [], companyOptions)}
           initialValues={initialGeneralInventoryData || {}}
           onSubmit={handleAddGenerlaiInventory}
+          onFieldChange={handleCompanyFieldChange}
         />
       </Modal>
 
       <Modal isOpen={isModalFCOpen} onClose={() => setIsModalFCOpen(false)} title="Add Fine-Chemicals Order">
         <ReusableForm
-          formConfig={addOrderFineChemicalFormConfig(budget || [])}
+          formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions)}
           initialValues={initialFineChemicalData || {}}
           onSubmit={handleAddFinechemicalt}
+          onFieldChange={handleCompanyFieldChange}
         />
       </Modal>
     </>

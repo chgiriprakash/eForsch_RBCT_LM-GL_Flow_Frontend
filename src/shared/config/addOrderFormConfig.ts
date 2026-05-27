@@ -1,6 +1,6 @@
 const addOrderFormConfig = (
   budgetOptions: string[],
-  // groupOptions: string[]
+  companyOptions: { label: string; key: string }[] = [],
 ) => [
 //   {
 //     id: "productId",
@@ -23,7 +23,8 @@ const addOrderFormConfig = (
   {
     id: "companyname",
     label: "Company (Mandatory)",
-    type: "text",
+    type: "select",
+    options: companyOptions,
     validation: { required: true },
   },
   {
@@ -40,9 +41,9 @@ const addOrderFormConfig = (
   },
   {
     id: "companyinternalno",
-    label: "Company Internal No",
+    label: "Company Internal No (auto-filled)",
     type: "text",
-    validation: { required: true },
+    validation: { required: false },
   },
   {
     id: "sapmaterialno",

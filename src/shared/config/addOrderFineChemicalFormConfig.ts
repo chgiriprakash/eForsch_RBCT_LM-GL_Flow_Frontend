@@ -1,4 +1,7 @@
-const addOrderFineChemicalFormConfig  = (budgetOptions: string[]) => [
+const addOrderFineChemicalFormConfig = (
+  budgetOptions: string[],
+  companyOptions: { label: string; key: string }[] = [],
+) => [
     {
         id: "productname",
         label: "Product",
@@ -12,9 +15,10 @@ const addOrderFineChemicalFormConfig  = (budgetOptions: string[]) => [
         validation: { required: true },
     },
     {
-        id: "companyname",
+        id: "companyName",
         label: "Company",
-        type: "text",
+        type: "select",
+        options: companyOptions,
         validation: { required: true },
     },
     {
@@ -34,9 +38,9 @@ const addOrderFineChemicalFormConfig  = (budgetOptions: string[]) => [
     //},
     {
         id: "companyInternalNo",
-        label: "Company Internal No",
-        type: "text", // changed to text to accept alphanumeric
-        validation: { required: true },
+        label: "Company Internal No (auto-filled)",
+        type: "text",
+        validation: { required: false },
     },
     //{
     //    id: "sapMaterialNo",

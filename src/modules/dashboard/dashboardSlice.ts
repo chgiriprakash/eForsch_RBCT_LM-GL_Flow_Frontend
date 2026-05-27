@@ -720,6 +720,19 @@ export const revokeSharedProduct = createThunk(
       .then((res) => res.data)
 );
 
+// ✅ Fetch all companies
+export const getCompanies = createAsyncThunk<any>(
+  'companies/getAllCompanies',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.get<any>('companies/getAllCompanies');
+      return response.data; // array of { id, companyNo, companyName }
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  }
+);
+
 // ✅ Fetch Budget names
 export const getBudgetList = createThunk("budget/getBudgetList", (user) =>
   axiosClient.post("api/budget/getBudgetList?page=1&limit=10&sortBy=createddate&order=desc", user).then((res) => res.data)
