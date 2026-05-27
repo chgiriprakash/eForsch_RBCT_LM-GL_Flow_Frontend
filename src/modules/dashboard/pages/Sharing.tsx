@@ -1,235 +1,409 @@
-import { useEffect, useState } from "react";
-import useAppDispatch from "../../../shared/hooks/useAppDispatch";
-import { useAppSelector } from "../../../shared/hooks/customHooks";
 import DynamicTable from "../../../shared/components/DynamicTable";
-import { productData } from "../../../shared/utils/data";
-import { getSharedProductList, shareProduct } from "../dashboardSlice";
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-interface Product {
-  productid: number;
-  productname: string;
-  catalogue: number;
-  companyname: string;
-  quantity: number;
-  companyInternalno: number;
-  sapmaterialno: number;
-  weightvolsubqty: string;
-  budgetno: number;
-  orderdate: string; // ISO date format
-  qtypriceordered: number;
-  concentration: string;
-  priority: string;
-  remark: string;
-  received: string;
-}
+import {
+  useEffect,
+  useState,
+} from "react";
 
-interface Column {
-  hidden: any;
-  key: string;
-  label: string;
-  sortable?: boolean;
-  filterable?: boolean;
-  isDate?: boolean;
-  onClick?: (row: any) => void;
-}
+import {
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
-interface Pagination {
-  currentPage: number;
-  pageSize: number;
-  totalPages: number;
-  totalRecords: number;
-}
+import useAppDispatch from "../../../shared/hooks/useAppDispatch";
 
-interface ProductListResponse {
-  list: Product[];
-  columns: Column[];
-  pagination: Pagination;
-}
+import { useAppSelector } from "../../../shared/hooks/customHooks";
 
-const defaultPagination: Pagination = {
+import {
+  getSharedProductList,
+  revokeSharedProduct,
+} from "../dashboardSlice";
+
+const defaultPagination = {
   currentPage: 1,
   pageSize: 10,
   totalPages: 1,
   totalRecords: 0,
 };
 
-const defaultColumns: Column[] = [
-  { key: "productname", label: "Product Name", sortable: true, hidden: undefined },
-  { key: "catalogue", label: "catalogue", sortable: true, hidden: undefined },
-  { key: "companyname", label: "Company Name", sortable: true, hidden: undefined },
-  { key: "quantity", label: "Quantity", sortable: true, hidden: undefined },
-  { key: "priority", label: "Priority", sortable: true, hidden: undefined },
-  { key: "received", label: "Received", sortable: true, hidden: undefined },
-  { key: "remark", label: "Remark", hidden: undefined},
-  { key: "orderdate", label: "Order Date", isDate: true, sortable: true, hidden: undefined },
-];
-
 const Sharing = () => {
-  const navigate = useNavigate();
-  const { id } = useParams<{ id?: string }>(); // Ensuring id is a string or undefined
-  const [searchParams] = useSearchParams();
-  console.log("Sharing - searchParams:", searchParams);
-  // const inventoryType = searchParams.get("inventoryType");
-  const location = useLocation();
-  const { inventoryType } = location.state || {};
-  const storedUser = localStorage.getItem("user");
-  const [data, setData] = useState<ProductListResponse | null>(null);
-  const [otherLabsData, setOtherLabsData] = useState(productData);
-  const dispatch = useAppDispatch();
-  const { loading, error } = useAppSelector((state) => state.dashboard);
+  const dispatch =
+    useAppDispatch();
 
-  const openProductDetails = (row: any) => {
-    const { action, ...serializableRow } = row as any;
-    navigate(`/inventory/General-inventory/${row.productId}`, { state: { product: serializableRow } });
+  const navigate =
+    useNavigate();
+
+  const location =
+    useLocation();
+
+  const isBaseSharingPath =
+    location.pathname ===
+    "/sharing";
+
+  const { loading, error } =
+    useAppSelector(
+      (state) =>
+        state.dashboard
+    );
+
+  const [data, setData] =
+    useState<any>(null);
+
+  const sharingPages = [
+    {
+      title:
+        "All Requests",
+
+      link:
+        "/sharing/all-requests",
+
+      description:
+        "View and manage all sharing requests.",
+
+      icon: "fa fa-list",
+    },
+
+    {
+      title:
+        "Group Sharing",
+
+      link:
+        "/sharing/group-sharing",
+
+      description:
+        "Share chemicals and inventory within groups.",
+
+      icon: "fa fa-users",
+    },
+
+    {
+      title:
+        "External Labs Sharing",
+
+      link:
+        "/sharing/lab-sharing",
+
+      description:
+        "Manage sharing with external laboratories.",
+
+      icon: "fa fa-flask",
+    },
+  ];
+
+  const openProductDetails = (
+    row: any
+  ) => {
+    navigate(
+      `/inventory/General-inventory/${row.productId}`,
+      {
+        state: {
+          product: row,
+        },
+      }
+    );
   };
 
-  // Fetch products based on `id`
-  useEffect(() => {
-    const fetchData = async () => {
-      console.log('id ', id, inventoryType)
+  const handleRevert =
+    async (
+      productId: number,
+      inventoryType: string
+    ) => {
       try {
-        let sharedProductResult = null;
-        const payload = {          
-          id: id ? parseInt(id) : null,
-          inventoryType: inventoryType || "generalInventory",
-          user: storedUser ? JSON.parse(storedUser) : null
-        };
-        if (id) {
-          sharedProductResult = await dispatch(
-            shareProduct(payload)
-          ).unwrap();
-          console.log("Shared Product Response:", sharedProductResult);
-          console.log("Sharing - sharedProductResult variable:", sharedProductResult);
-        }
+        await dispatch(
+          revokeSharedProduct({
+            productId,
+            inventoryType,
+          })
+        ).unwrap();
 
-        const sharedListResult = await dispatch(getSharedProductList(storedUser)).unwrap();
-        console.log("Shared Product List Response:", sharedListResult);
-
-        const normalizedData = normalizeKeysAndFixSpelling(sharedListResult.data);
-        console.log("Normalized Data:", normalizedData);
-
-        // Ensure `columns` exist; fallback to default if missing
-        const columnsFromAPI = normalizedData.columns || defaultColumns;
-
-        const sharedListResultColumns = columnsFromAPI.map((column: Column) => ({
-          ...column,
-          onClick:
-          column.key === "productName"
-            ? (row: Product) => openProductDetails(row)
-            : undefined,
-          isDate: column.key === "expiryDate" || column.key === "orderdate",
-          hidden: column.key.includes("productId") ? true : false,
-        }));
-
-        setData({
-          list: normalizedData.list || [],
-          columns: sharedListResultColumns,
-          pagination: normalizedData.pagination || defaultPagination,
-        });
-
-        // Add a new "Request" column dynamically
-        const updatedColumns = columnsFromAPI.map((column: Column) => ({
-          ...column,
-          onClick:
-          column.key === "productName"
-            ? (row: Product) => openProductDetails(row)
-            : undefined,
-          isDate: column.key === "expiryDate" || column.key === "orderdate",
-          hidden: column.key.includes("productId") ? true : false,
-        }));
-        // Then, add the new "Request" column dynamically
-        updatedColumns.push({
-          key: "request",
-          label: "Contact",
-          sortable: false,
-          onClick: (row: any) => alert(`Clicked on ${row.productname}`),
-        });
-
-        const updatedList = normalizedData.list.map((item: any) => ({
-          ...item,
-          request: <button className="btn-color upload-wrapper btn btn-primary">Request</button>,
-        })) || [];
-
-        setOtherLabsData({
-          ...otherLabsData,
-          columns: updatedColumns,
-          list: updatedList,
-        });
-
-      } catch (err) {
-        console.error("Error fetching products:", err);
+        fetchSharedProducts();
+      } catch (error) {
+        console.error(
+          "Revert failed:",
+          error
+        );
       }
     };
 
-    fetchData();
-  }, [dispatch, id]); // ✅ Runs when `id` changes
+  const fetchSharedProducts =
+    async () => {
+      try {
+        const storedUser =
+          localStorage.getItem(
+            "user"
+          );
 
-  const normalizeKeysAndFixSpelling = (data: any) => {
-    const { list, columns, pagination } = data;
-  
-    // Create a mapping of incorrect keys to their correct spellings
-    const spellingCorrections: Record<string, string> = {
-      recieved: "received", // Correct the spelling error
+        const parsedUser =
+          storedUser
+            ? JSON.parse(
+              storedUser
+            )
+            : null;
+
+        const response =
+          await dispatch(
+            getSharedProductList(
+              {
+                page: 1,
+                size: 1000,
+                user:
+                  parsedUser,
+              }
+            )
+          ).unwrap();
+
+        const responseData =
+          response?.data;
+
+        const updatedColumns =
+          (
+            responseData?.columns ||
+            []
+          ).map(
+            (column: any) => ({
+              ...column,
+
+              onClick:
+                column.key ===
+                  "productName"
+                  ? (
+                    row: any
+                  ) =>
+                    openProductDetails(
+                      row
+                    )
+                  : undefined,
+            })
+          );
+
+        updatedColumns.push({
+          key: "actions",
+
+          label: "Actions",
+        });
+
+        const formattedList =
+          responseData?.list?.map(
+            (item: any) => ({
+              ...item,
+
+              remark:
+                item.remarks ||
+                "-",
+
+              actions: (
+                <div className="d-flex gap-2">
+                  <button
+                    className="btn btn-warning btn-sm"
+                    onClick={() =>
+                      handleRevert(
+                        item.productId,
+                        item.inventoryType
+                      )
+                    }
+                  >
+                    Revert
+                  </button>
+                </div>
+              ),
+            })
+          ) || [];
+
+        setData({
+          list: formattedList,
+
+          columns:
+            updatedColumns,
+
+          pagination:
+            responseData?.pagination ||
+            defaultPagination,
+        });
+      } catch (error) {
+        console.error(
+          "Error fetching shared products:",
+          error
+        );
+
+        setData({
+          list: [],
+
+          columns: [],
+
+          pagination:
+            defaultPagination,
+        });
+      }
     };
-  
-    // Create a mapping of lowercase column keys to their actual keys
-    const keyMapping: Record<string, string> = {};
-    console.log("Sharing - keyMapping initialized:", keyMapping);
-    columns.forEach((column: any) => {
-      const correctedKey = spellingCorrections[column.key] || column.key; // Apply spelling correction if necessary
-      keyMapping[column.key.toLowerCase()] = correctedKey;
-    });
-  
-    // Normalize keys in the list and fix spelling errors
-    const normalizedList = list.map((item: any) => {
-      const normalizedItem: any = {};
-      Object.keys(item).forEach((key) => {
-        const normalizedKey = keyMapping[key.toLowerCase()] || spellingCorrections[key] || key; // Use corrected key
-        console.log("Sharing - normalizedKey for key:", key, "-> normalizedKey:", normalizedKey);
-        normalizedItem[normalizedKey] = item[key];
-      });
-      return normalizedItem;
-    });
-  
-    // Normalize columns and fix spelling errors
-    const normalizedColumns = columns.map((column: any) => ({
-      ...column,
-      key: spellingCorrections[column.key] || column.key, // Correct column keys if necessary
-    }));
-  
-    return { list: normalizedList, columns: normalizedColumns, pagination };
-  };
+
+  useEffect(() => {
+    if (
+      isBaseSharingPath
+    ) {
+      fetchSharedProducts();
+    }
+  }, [location.pathname]);
+
+  const renderBreadcrumbs =
+    () => {
+      const segments =
+        location.pathname
+          .split("/")
+          .filter(Boolean);
+
+      return (
+        <div className="breadcrumbs mb-3">
+          {segments.map(
+            (
+              segment,
+              index
+            ) => {
+              const path =
+                "/" +
+                segments
+                  .slice(
+                    0,
+                    index + 1
+                  )
+                  .join("/");
+
+              const isSharing =
+                segment.toLowerCase() ===
+                "sharing";
+
+              const label =
+                isSharing ? (
+                  <>
+                    <i
+                      className="fa fa-share-alt"
+                      style={{
+                        marginRight:
+                          "4px",
+                      }}
+                    />
+
+                    Sharing
+                  </>
+                ) : (
+                  decodeURIComponent(
+                    segment.replace(
+                      /-/g,
+                      " "
+                    )
+                  )
+                );
+
+              return (
+                <span
+                  key={
+                    index
+                  }
+                >
+                  <NavLink
+                    to={
+                      path
+                    }
+                    style={{
+                      textTransform:
+                        "capitalize",
+                    }}
+                  >
+                    {
+                      label
+                    }
+                  </NavLink>
+
+                  {index <
+                    segments.length -
+                    1 &&
+                    " / "}
+                </span>
+              );
+            }
+          )}
+        </div>
+      );
+    };
 
   return (
     <>
-      {error && <p>Error: {error}</p>}
+      {renderBreadcrumbs()}
 
-      {!loading && data ? (
-        <div className="two-tables-container">
-          {/* Table 1 - Chemicals We Share */}
-          <div className="table-card">
-            <h4>Chemicals We Share</h4>
-            <DynamicTable
-              data={data?.list}
-              columns={data?.columns}
-              pagination={data?.pagination || defaultPagination}
-            />
-          </div>
+      {isBaseSharingPath &&
+        (!loading ? (
+          <>
+            <div className="card-container">
+              {sharingPages.map(
+                (
+                  item,
+                  index
+                ) => (
+                  <NavLink
+                    className="card"
+                    to={
+                      item.link
+                    }
+                    key={
+                      index
+                    }
+                  >
+                    <i
+                      className={
+                        item.icon
+                      }
+                    ></i>
 
-          {/* Table 2 - Chemicals We May Need */}
-          <div className="table-card">
-            <h4>Chemicals We May Need</h4>
+                    <h3>
+                      {
+                        item.title
+                      }
+                    </h3>
+
+                    <p>
+                      {
+                        item.description
+                      }
+                    </p>
+                  </NavLink>
+                )
+              )}
+            </div>
+
+            {error && (
+              <div className="error-message">
+                <p>
+                  Error:{" "}
+                  {String(
+                    error
+                  )}
+                </p>
+              </div>
+            )}
+
             <DynamicTable
-              data={otherLabsData.list}
-              columns={otherLabsData.columns}
-              pagination={data.pagination || defaultPagination}
+              data={
+                data?.list ||
+                []
+              }
+              columns={
+                data?.columns ||
+                []
+              }
+              pagination={
+                data?.pagination ||
+                defaultPagination
+              }
             />
-          </div>
-        </div>
-      ) : (
-        <p>Loading...</p>
-      )}
+          </>
+        ) : (
+          <p>
+            Loading...
+          </p>
+        ))}
+
+      <Outlet />
     </>
   );
 };

@@ -1,19 +1,20 @@
-import axios from 'axios';
+import axios from "axios";
 
 const axiosClient = axios.create({
   baseURL: "http://localhost:8080/",
   headers: {
-    'Content-Type': 'application/json',
-  },
+    "Content-Type": "application/json",
+  }
 });
 
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
-    console.log("axiosClient - token retrieved:", token);
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const token = localStorage.getItem("authToken");
+
+    if (token && config.headers) {
+      config.headers["Authorization"] = `Bearer ${token}`;
     }
+
     return config;
   },
   (error) => Promise.reject(error)

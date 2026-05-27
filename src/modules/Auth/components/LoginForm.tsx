@@ -4,6 +4,7 @@ import useAppDispatch from "../../../shared/hooks/useAppDispatch";
 import InputField from "../../../shared/components/InputField";
 import Toast from "../../../shared/components/Toast";
 import { loginUser } from "../authSlice";
+import { createProfile, getProfile } from "../../dashboard/dashboardSlice";
 
 const LoginForm: React.FC<{ formConfig: any[] }> = ({ formConfig }) => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -30,58 +31,107 @@ const LoginForm: React.FC<{ formConfig: any[] }> = ({ formConfig }) => {
     return "";
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const newErrors: Record<string, string> = {};
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    // ✅ Validate fields before submitting
-    formConfig.forEach(({ id, validation }) => {
-      const error = validateField(id, formData[id], validation);
-      if (error) newErrors[id] = error;
-    });
+  const newErrors: Record<string, string> = {};
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      console.warn("Validation failed:", newErrors);
-      alert("Please fill all required fields correctly.");
-      return;
+  formConfig.forEach(({ id, validation }) => {
+    const error = validateField(id, formData[id], validation);
+
+    if (error) {
+      newErrors[id] = error;
     }
+  });
+
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    alert("Please fill all required fields correctly.");
+    return;
+  }
+
+  try {
+    const credentials = {
+      email: formData.email,
+      password: formData.password,
+    };
+
+    const result = await dispatch(loginUser(credentials)).unwrap();
+
+    console.log("LOGIN RESPONSE:", result);
+
+    const user = result?.data?.user;
 
     try {
-      console.log("Submitting login form:", formData);
-      const credentials = {
-        email: formData.email,
-        password: formData.password,
-      };
-      const result = await dispatch(loginUser(credentials)); // API call to login
-      console.log("API Response:", result);
+      const existingProfile = await dispatch(
+        getProfile(user.id)
+      ).unwrap();
 
-      if (
-        result &&
-        result.payload &&
-        typeof result.payload === "object" &&
-        "data" in result.payload
-      ) {
-        console.log("Login successful! Navigating to Dashboard...");
-        // alert("Login successful!");
-        setToastMessage("Login successful!");
-        setToastType("success");
+      console.log("Profile exists:", existingProfile);
 
-        navigate("/dashboard"); // ✅ Redirect to dashboard on success
-      } else {
-        console.warn("Login failed. Invalid credentials.");
-        alert("Login failed. Please check your credentials.");
-        setToastMessage("Login failed. Please check your credentials.");
-        setToastType("error");
-      }
-    } catch (error) {
-      console.error("Error during login:", error);
-      alert("Session expired or invalid user. Redirecting to login.");
-      setToastMessage("Session expired or invalid user.");
-      setToastType("error");
-      navigate("/auth/login"); // ✅ Redirect to login if session is expired or invalid user
+    } catch (error: any) {
+
+      console.log("Profile not found. Creating profile...");
+
+      // if (
+      //   error?.code === 404 ||
+      //   error?.message?.includes("Profile not found")
+      // ) {
+
+        const profilePayload = {
+          userId: user?.id || "",
+          email: user?.email || "",
+          firstName: user?.name || "",
+          secondName: "",
+          title: "",
+          role: user?.role || "",
+          groupName: user?.groupName || "",
+          status: user?.status || "",
+          addressLine1: "",
+          addressLine2: "",
+          city: "",
+          state: "",
+          country: "",
+          postalCode: "",
+          labName: "",
+          roomNumber: "",
+          buildingNumber: "",
+          streetName: "",
+        };
+
+        try {
+          await dispatch(
+            createProfile(profilePayload)
+          ).unwrap();
+
+          console.log("Profile created successfully");
+
+        } catch (profileError) {
+
+          console.error(
+            "Profile creation failed:",
+            profileError
+          );
+        }
+      // }
     }
-  };
+
+    setToastMessage("Login successful!");
+    setToastType("success");
+
+    navigate("/dashboard");
+
+  } catch (error) {
+
+    console.error("Login failed:", error);
+
+    setToastMessage(
+      "Login failed. Please check your credentials."
+    );
+
+    setToastType("error");
+  }
+};
 
   return (
     <>
@@ -98,6 +148,7 @@ const LoginForm: React.FC<{ formConfig: any[] }> = ({ formConfig }) => {
             error={errors[field.id]}
             onChange={handleChange}
             isLoggedIn={false}
+            totalFields={formConfig.length}
           />
         ))}
 
@@ -105,7 +156,14 @@ const LoginForm: React.FC<{ formConfig: any[] }> = ({ formConfig }) => {
           <button type="submit" className="btn btn-color">
             Login
           </button>
-          <Link to="/auth/register">New User Registration</Link>
+          <div className="links mt-2">
+            <Link to="/auth/register" className="me-3">
+              New User Registration
+            </Link>
+            <Link to="/auth/forgot-password">
+              Forgot Password?
+            </Link>
+          </div>
         </div>
       </form>
 

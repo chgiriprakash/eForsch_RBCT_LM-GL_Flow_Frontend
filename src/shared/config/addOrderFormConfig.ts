@@ -16,7 +16,7 @@ const addOrderFormConfig = (
   },
   {
     id: "catalogue",
-    label: "Catalogue (Mandatory)",
+    label: "Catalogue/Article Number",
     type: "text",
     validation: { required: true },
   },
@@ -90,13 +90,13 @@ const addOrderFormConfig = (
   },
   {
     id: "price",
-    label: "Price",
+    label: "Price per package unit",
     type: "number",
     validation: { required: true },
   },
   {
     id: "remarks",
-    label: "Remarks",
+    label: "Remarks/Name",
     type: "text",
     validation: { required: false },
   },

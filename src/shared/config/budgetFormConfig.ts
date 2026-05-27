@@ -1,6 +1,10 @@
-const budgetFormConfig  = (
-  // budgetOptions: string[],
-  groupOptions: string[]
+type SelectOption = {
+  label: string;
+  key: string;
+};
+
+const budgetFormConfig = (
+  groupOptions: SelectOption[]
 ) => [
 //   {
 //     id: "productid",

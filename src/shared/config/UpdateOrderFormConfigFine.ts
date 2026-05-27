@@ -7,7 +7,7 @@ const UpdateOrderFormConfigFine = (budgetOptions: string[]) => [
   },
   {
     id: "catalogue",
-    label: "Catalogue (Mandatory)",
+    label: "Catalogue/Article Number",
     type: "text",
     validation: { required: true },
   },

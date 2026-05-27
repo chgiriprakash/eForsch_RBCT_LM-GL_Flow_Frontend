@@ -22,10 +22,13 @@ interface Props<T> {
   columns: Column[];
   pagination: Pagination;
   dateFormat?: Intl.DateTimeFormatOptions;
+
+  onAddClick?: () => void;
+  canManage?: boolean;
 }
 
 const ghsImageMap: Record<string, string> = {
- "Explosive": "/src/assets/ghs/ghs_001.jpg",
+  "Explosive": "/src/assets/ghs/ghs_001.jpg",
   "Flammable": "/src/assets/ghs/ghs_002.jpg",
   "Oxidizing": "/src/assets/ghs/ghs_003.jpg",
   "Corrosive": "/src/assets/ghs/ghs_005.jpg",
@@ -40,11 +43,14 @@ const DynamicTable = <T extends Record<string, any>>({
   columns = [],
   // pagination,
   dateFormat = { year: "numeric", month: "long", day: "numeric" },
+
+  // onAddClick,
+  // canManage,
 }: Props<T>) => {
   console.log("DynamicTable - dateFormat:", dateFormat);
   const userRole = JSON.parse(localStorage.getItem('user') || '');
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [searchQuery, setSearchQuery] = useState("");
@@ -110,7 +116,7 @@ const DynamicTable = <T extends Record<string, any>>({
 
   return (
     <div className="table-wrapper">
-      <div className="table-controls">
+      <div className="table-controls d-flex justify-content-between align-items-center mb-3">
         <div className="search-box">
           <label className="col-form-label label">Search</label>
           <input
@@ -121,6 +127,15 @@ const DynamicTable = <T extends Record<string, any>>({
             onChange={handleSearchChange}
           />
         </div>
+
+        {/* RIGHT - Add Project Button */}
+        {/* {canManage && (
+          <button
+            className="btn btn-color"
+            onClick={onAddClick}>
+            Add Project
+          </button>
+        )} */}
       </div>
 
       <div className="table-container scrollable-container">
@@ -128,12 +143,12 @@ const DynamicTable = <T extends Record<string, any>>({
           <thead>
             <tr>
               {columns
-              .filter((col) => !col.hidden) // 👈 skip hidden columns
-              .map((col) => (
-                <th key={col.key} onClick={() => handleSort(col.key)}>
-                  <div className="column-header">{col.label}</div>
-                </th>
-              ))}
+                .filter((col) => !col.hidden) // 👈 skip hidden columns
+                .map((col) => (
+                  <th key={col.key} onClick={() => handleSort(col.key)}>
+                    <div className="column-header">{col.label}</div>
+                  </th>
+                ))}
             </tr>
           </thead>
           <tbody>
@@ -153,12 +168,14 @@ const DynamicTable = <T extends Record<string, any>>({
                     const value = row[col.key];
 
                     return (
-                     <td
+                      <td
                         key={col.key}
                         onClick={() => col.onClick?.(row)}
                         className={
                           (col.key === "productname" ||
                             col.key === "productName" ||
+                            col.key === "projectName" ||
+                            col.key === "experimentTitle" ||
                             col.key === "request" ||
                             col.key === "fileName") && col.onClick
                             ? "clickable"
@@ -223,7 +240,7 @@ const DynamicTable = <T extends Record<string, any>>({
         <div className="rows-per-page">
           <label className="col-form-label label">Row:</label>
           <select value={rowsPerPage} onChange={handleRowsPerPageChange}>
-            {[5, 10, 15, 20].map((num) => (
+            {[5, 10, 15, 20, 50].map((num) => (
               <option key={num} value={num}>
                 {num}
               </option>

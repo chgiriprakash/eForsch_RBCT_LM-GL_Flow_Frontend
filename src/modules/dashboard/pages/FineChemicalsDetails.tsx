@@ -9,11 +9,13 @@ import ReusableForm from "../../../shared/components/ReusableForm";
 import {
   addFineChemicalOrder,
   getBudgetList,
-  // getGroupNames,
   getFineChemicalById,
   editFineChemicals,
+  shareProduct,
+  getProfile,
 } from "../dashboardSlice";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
+import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
 
 const FineChemicalsDetails = () => {
   const userRole = JSON.parse(localStorage.getItem("user") || "{}");
@@ -24,13 +26,23 @@ const FineChemicalsDetails = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [profileMissing, setProfileMissing] = useState(false);
+  
   const [product, setProduct] = useState<any>(null);
   const [updateProd, setupdateProd] = useState<any>(null);
   const [order, setOrder] = useState<any>(null);
-  console.log("FineChemicalsDetails - order:", order);
   const [budget, setBudget] = useState<string[]>([]);
 
-  // ✅ FIXED normalize function
+  const [shareInitialValues] = useState<any>({
+    slot1Start: "",
+    slot1End: "",
+    slot2Start: "",
+    slot2End: "",
+    slot3Start: "",
+    slot3End: "",
+  });
+
   function normalizeKeysToFormIds(input: Record<string, any>): Record<string, any> {
     const keyMapping: Record<string, string> = {
       productid: "productid",
@@ -72,7 +84,6 @@ const FineChemicalsDetails = () => {
       const normalizedKey = keyMapping[key.toLowerCase()] || key;
       let value = input[key];
 
-      // ✅ Parse stringified arrays (like '["Danger"]')
       if (typeof value === "string" && value.startsWith("[") && value.endsWith("]")) {
         try {
           value = JSON.parse(value);
@@ -81,7 +92,6 @@ const FineChemicalsDetails = () => {
         }
       }
 
-      // ✅ Convert “Yes”/“No” or “true”/“false” consistently
       if (value === "true") value = "Yes";
       if (value === "false") value = "No";
 
@@ -131,83 +141,60 @@ const FineChemicalsDetails = () => {
     role: userRole?.role || "",
   });
 
-function mapToModifyApiPayload(product: any): any {
-  return {
-    // 🔹 Core product info
-    productId: product.productId || product.productid || 0,
-    productname: product.productname || "",
-    companyname: product.companyname || "",
-    quantity: product.quantity || "",
-    expiryDate: product.expiryDate,
-    companyInternalNo: product.companyInternalNo || product.companyinternalno || "",
-    sapMaterialNo: product.sapMaterialNo || product.sapmaterialno || "",
-    wvsubqty: product.wvsubqty || product.weightvolsubqty || "",
-    budgetno: product.budgetno || "",
-    orderdate: product.orderdate,
-    orderedby: userRole?.name || "",
-    concentration: product.concentration || "",
-
-    // 🔹 Amount & pricing
-    amount: Number(product.amount) || Number(product.price) || 0, // API expects 'amount'
-    price: Number(product.price) || 0,
-    qtypriceordered:
-      product.quantity && product.price
-        ? `${product.quantity}x${product.price}`
-        : "",
-
-    // 🔹 Remarks and identification
-    remarks: product.remarks || "",
-    casnumber: product.casnumber || "",
-
-    // 🔹 Boolean conversions
-    hazardousSubstance: product.hazardousSubstance || "",
-    cmrSubstance: product.cmrSubstance || "",
-    skinResorptive: product.skinResorptive || "",
-    
-    // 🔹 GHS & safety info
-    ghsSymbols: Array.isArray(product.ghsSymbols)
-      ? product.ghsSymbols
-      : typeof product.ghsSymbols === "string"
-      ? [product.ghsSymbols]
-      : [],
-    ghsSignalWord: Array.isArray(product.ghsSignalWord)
-      ? product.ghsSignalWord
-      : typeof product.ghsSignalWord === "string"
-      ? [product.ghsSignalWord]
-      : [],
-    hPhrases: product.gethPhrases || product.hPhrases || product.hphrases || "",
-    pPhrases: product.getpPhrases || product.pPhrases || product.pphrases || "",
-
-    // 🔹 Substitution fields
-    substitutionCheck: product.substitutionCheck || "",
-    substitutionOption: product.substitutionOption || "",
-
-    // 🔹 Storage & group data
-    storageLocation: product.storageLocation || product.storagelocation || "",
-
-    // 🔹 Status info
-    priority: product.priority || "Normal",
-    received: product.received || "Pending",
-    catalogue: product.catalogue || "",
-
-    // 🔹 System metadata
-    createdAt: product.createdAt
-      ? new Date(product.createdAt).toISOString()
-      : new Date().toISOString(),
-
-    // 🔹 File and attachment info
-    fileName: product.fileName || product.filename || "",
-    fileType: product.fileType || product.filetype || "",
-    fileContent: product.attachment
-      ? [product.attachment.name || ""]
-      : product.fileContent || [],
-    groupName: userRole?.groupName || product.groupName || "",
-    updatedAt: product.updatedAt || new Date().toISOString(),
-    createdBy: userRole?.name || "",
-    updatedBy: userRole?.name || "",
-    role: userRole?.role || "",
-  };
-}
+  function mapToModifyApiPayload(product: any): any {
+    return {
+      productId: product.productId || product.productid || 0,
+      productname: product.productname || "",
+      companyname: product.companyname || "",
+      quantity: product.quantity || "",
+      expiryDate: product.expiryDate,
+      companyInternalNo: product.companyInternalNo || product.companyinternalno || "",
+      sapMaterialNo: product.sapMaterialNo || product.sapmaterialno || "",
+      wvsubqty: product.wvsubqty || product.weightvolsubqty || "",
+      budgetno: product.budgetno || "",
+      orderdate: product.orderdate,
+      orderedby: userRole?.name || "",
+      concentration: product.concentration || "",
+      amount: Number(product.amount) || Number(product.price) || 0,
+      price: Number(product.price) || 0,
+      qtypriceordered:
+        product.quantity && product.price
+          ? `${product.quantity}x${product.price}`
+          : "",
+      remarks: product.remarks || "",
+      casnumber: product.casnumber || "",
+      hazardousSubstance: product.hazardousSubstance || "",
+      cmrSubstance: product.cmrSubstance || "",
+      skinResorptive: product.skinResorptive || "",
+      ghsSymbols: Array.isArray(product.ghsSymbols)
+        ? product.ghsSymbols
+        : typeof product.ghsSymbols === "string"
+        ? [product.ghsSymbols]
+        : [],
+      ghsSignalWord: Array.isArray(product.ghsSignalWord)
+        ? product.ghsSignalWord
+        : typeof product.ghsSignalWord === "string"
+        ? [product.ghsSignalWord]
+        : [],
+      hPhrases: product.hPhrases || "",
+      pPhrases: product.pPhrases || "",
+      substitutionCheck: product.substitutionCheck || "",
+      substitutionOption: product.substitutionOption || "",
+      storageLocation: product.storageLocation || "",
+      priority: product.priority || "Normal",
+      received: product.received || "Pending",
+      catalogue: product.catalogue || "",
+      createdAt: product.createdAt || new Date().toISOString(),
+      fileName: product.fileName || product.filename || "",
+      fileType: product.fileType || product.filetype || "",
+      fileContent: product.fileContent || [],
+      groupName: userRole?.groupName || product.groupName || "",
+      updatedAt: product.updatedAt || new Date().toISOString(),
+      createdBy: userRole?.name || "",
+      updatedBy: userRole?.name || "",
+      role: userRole?.role || "",
+    };
+  }
 
   const ghsImageMap: Record<string, string> = {
     "Explosive": "/src/assets/ghs/ghs_001.jpg",
@@ -226,7 +213,6 @@ function mapToModifyApiPayload(product: any): any {
       const result = await dispatch(getFineChemicalById(parseInt(id))).unwrap();
       if (result?.data?.list?.length) {
         const normalized = normalizeKeysToFormIds(result.data.list[0]);
-        console.log("Normalized Product:", normalized);
         setProduct(normalized);
         setupdateProd(mapToModifyApiPayload(normalized));
         setOrder(mapFineProductToOrder(normalized, userRole));
@@ -247,7 +233,6 @@ function mapToModifyApiPayload(product: any): any {
         }));
       setBudget(formattedOptions);
     } catch (error) {
-      console.error("Failed to fetch budget:", error);
       setBudget(["Budget"]);
     }
   };
@@ -258,9 +243,182 @@ function mapToModifyApiPayload(product: any): any {
   }, [dispatch, id]);
 
   const handleOrder = () => setIsModalOpen(true);
-  const handleShare = () =>
-    navigate(`/sharing/${id}`, { state: { inventoryType: "fineChemicalInventory" } });
   const handleUpdate = () => setIsProductModalOpen(true);
+
+  const handleShare = async () => {
+    try {
+      const profileResult = await dispatch(getProfile(userRole.id)).unwrap();
+      const profileData = profileResult?.data;
+
+      const isProfileIncomplete =
+        !profileData ||
+        !profileData.firstName ||
+        !profileData.email ||
+        !profileData.addressLine1 ||
+        !profileData.city ||
+        !profileData.labName;
+
+      if (isProfileIncomplete) {
+        setProfileMissing(true);
+      } else {
+        setProfileMissing(false);
+      }
+      setIsShareModalOpen(true);
+    } catch (error) {
+      setProfileMissing(true);
+      setIsShareModalOpen(true);
+    }
+  };
+
+  const handleShareSubmit = async (formData: Record<string, any>) => {
+    const localProfile = JSON.parse(localStorage.getItem("profile") || "{}");
+
+    try {
+      // ✅ Helper for slot creation
+    const buildSlot = (
+      slotNumber: number,
+      day: string,
+      fromTime: string,
+      toTime: string
+    ) => {
+
+      // Skip empty optional slots
+      if (!day || !fromTime || !toTime) {
+        return null;
+      }
+
+      const today = new Date()
+        .toISOString()
+        .split("T")[0];
+
+      return {
+        timeSlotId: slotNumber,
+        slotNumber,
+
+        day,
+
+        fromTime,
+        toTime,
+
+        startTime: new Date(
+          `${today}T${fromTime}`
+        ).toISOString(),
+
+        endTime: new Date(
+          `${today}T${toTime}`
+        ).toISOString(),
+
+        date: today,
+
+        time: `${fromTime} - ${toTime}`,
+      };
+    };
+
+    // ✅ Build slots array
+    const timeSlots = [
+
+      buildSlot(
+        1,
+        formData.slot1Day,
+        formData.slot1FromTime,
+        formData.slot1ToTime
+      ),
+
+      buildSlot(
+        2,
+        formData.slot2Day,
+        formData.slot2FromTime,
+        formData.slot2ToTime
+      ),
+
+      buildSlot(
+        3,
+        formData.slot3Day,
+        formData.slot3FromTime,
+        formData.slot3ToTime
+      ),
+
+    ].filter(Boolean);
+
+    const payload = {
+
+      productId: Number(id),
+
+      quantity: Number(formData.quantity),
+
+      inventoryType: "fineChemicals",
+
+      timeSlots,
+
+      // ✅ USER
+      user: {
+
+        id: userRole?.id || 0,
+
+        userId: userRole?.userId || "",
+
+        email: userRole?.email || "",
+
+        name: userRole?.name || "",
+
+        role: userRole?.role || "",
+
+        groupName:
+          userRole?.groupName || "",
+
+        status:
+          userRole?.status || "",
+      },
+
+      // ✅ ADDRESS
+      address: {
+
+        line1:
+          localProfile?.address?.line1 ||
+          localProfile?.addressLine1 ||
+          "",
+
+        line2:
+          localProfile?.address?.line2 ||
+          localProfile?.addressLine2 ||
+          "",
+
+        city:
+          localProfile?.address?.city ||
+          localProfile?.city ||
+          "",
+
+        state:
+          localProfile?.address?.state ||
+          localProfile?.state ||
+          "",
+
+        postalCode:
+          localProfile?.address?.postalCode ||
+          localProfile?.postalCode ||
+          "",
+
+        country:
+          localProfile?.address?.country ||
+          localProfile?.country ||
+          "",
+      },
+    };
+
+    console.log(
+      "🚀 FINAL SHARE PAYLOAD:",
+      payload
+    );
+
+      await dispatch(shareProduct(payload)).unwrap();
+      alert("Product shared successfully!");
+      setIsShareModalOpen(false);
+      navigate("/sharing");
+    } catch (error) {
+      alert("Failed to share product.");
+      navigate("/sharing");
+    }
+  };
 
   const handleOrderSubmit = useCallback(
     async (formData: Record<string, any>) => {
@@ -283,12 +441,24 @@ function mapToModifyApiPayload(product: any): any {
         setIsModalOpen(false);
         navigate(`/orders`);
       } catch (error) {
-        console.error("Order submission failed:", error);
         alert("Failed to place order.");
       }
     },
     [product, userRole, dispatch, navigate]
   );
+
+  const handleUpdateSubmit = async (formData: any) => {
+    const payload = mapToModifyApiPayload(formData);
+    try {
+      const updated = await dispatch(editFineChemicals(payload)).unwrap();
+      setProduct(normalizeKeysToFormIds(updated.data));
+      fetchData();
+      setIsProductModalOpen(false);
+      alert("Product updated successfully!");
+    } catch (error) {
+      alert("Failed to update product.");
+    }
+  };
 
   const getValue = (value: any) =>
     value === null || value === undefined || value === "" ? "-" : value;
@@ -304,25 +474,6 @@ function mapToModifyApiPayload(product: any): any {
     return format.replace(/DD|MM|YYYY/g, (key) => map[key]);
   };
 
-  const handleUpdateSubmit = async (formData: any) => {
-    const payload = mapToModifyApiPayload(formData);
-    ["hazardousSubstance", "cmrSubstance", "skinResorptive"].forEach(key => {
-      payload[key] = formData[key] === "Yes";
-    });
-
-    try {
-      const updated = await dispatch(editFineChemicals(payload)).unwrap();
-      setProduct(normalizeKeysToFormIds(updated.data));
-      fetchData();
-      setIsProductModalOpen(false);
-    } catch (error) {
-      console.error("Update failed:", error);
-      alert("Failed to update product.");
-    }
-    
-  };
-
-
   return (
     <>
       {error && <div className="error-message">Error: {error}</div>}
@@ -330,25 +481,15 @@ function mapToModifyApiPayload(product: any): any {
         <>
           <div className="title-header">
             <div className="btn-wrapper">
-              <Button className="btn-color" onClick={handleOrder}>
-                Add Order
-              </Button>
-              <Button className="btn-color" onClick={handleShare}>
-                Share
-              </Button>
-              <Button className="btn-color" onClick={handleUpdate}>
-                Update Product
-              </Button>
+              <Button className="btn-color" onClick={handleOrder}>Add Order</Button>
+              <Button className="btn-color" onClick={handleShare}>Share</Button>
+              <Button className="btn-color" onClick={handleUpdate}>Update Product</Button>
             </div>
           </div>
 
           <div className="product-details">
             <table className="product-details-table">
-              <thead>
-                <tr>
-                  <th colSpan={2}>{getValue(product.productname)}</th>
-                </tr>
-              </thead>
+              <thead><tr><th colSpan={2}>{getValue(product.productname)}</th></tr></thead>
               <tbody>
                 <tr><td>Catalogue</td><td>{getValue(product.catalogue)}</td></tr>
                 <tr><td>Company</td><td>{getValue(product.companyname)}</td></tr>
@@ -369,23 +510,14 @@ function mapToModifyApiPayload(product: any): any {
                   <td>
                     {Array.isArray(product.ghsSymbols) && product.ghsSymbols.length > 0
                       ? product.ghsSymbols.map((symbol: any, idx: any) => (
-                          <img
-                            key={idx}
-                            src={ghsImageMap[symbol]}
-                            alt={symbol}
-                            style={{ width: 40, height: 40, marginRight: 6 }}
-                          />
+                          <img key={idx} src={ghsImageMap[symbol]} alt={symbol} style={{ width: 40, height: 40, marginRight: 6 }} />
                         ))
                       : "-"}
                   </td>
                 </tr>
                 <tr>
                   <td>Signal Words</td>
-                  <td>
-                    {Array.isArray(product.ghsSignalWord)
-                      ? product.ghsSignalWord.join(", ")
-                      : getValue(product.ghsSignalWord)}
-                  </td>
+                  <td>{Array.isArray(product.ghsSignalWord) ? product.ghsSignalWord.join(", ") : getValue(product.ghsSignalWord)}</td>
                 </tr>
                 <tr><td>H Phrases</td><td>{getValue(product.hPhrases)}</td></tr>
                 <tr><td>P Phrases</td><td>{getValue(product.pPhrases)}</td></tr>
@@ -401,28 +533,32 @@ function mapToModifyApiPayload(product: any): any {
         <p>Loading...</p>
       )}
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Add Fine Chemical Product Order"
-      >
-        <ReusableForm
-          formConfig={addOrderFineChemicalFormConfig(budget || [])}
-          initialValues={order || {}}
-          onSubmit={handleOrderSubmit}
-        />
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Fine Chemical Product Order">
+        <ReusableForm formConfig={addOrderFineChemicalFormConfig(budget || [])} initialValues={order || {}} onSubmit={handleOrderSubmit} />
       </Modal>
 
-      <Modal
-        isOpen={isProductModalOpen}
-        onClose={() => setIsProductModalOpen(false)}
-        title="Update Fine Chemical Product"
-      >
-        <ReusableForm
-          formConfig={updateProductFormConfig(budget || [])}
-          initialValues={updateProd || {}}
-          onSubmit={handleUpdateSubmit}
-        />
+      <Modal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} title="Update Fine Chemical Product">
+        <ReusableForm formConfig={updateProductFormConfig(budget || [])} initialValues={updateProd || {}} onSubmit={handleUpdateSubmit} />
+      </Modal>
+
+      <Modal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} title="Share Product">
+        {profileMissing ? (
+          <div>
+            <p style={{ color: "red", fontWeight: "bold" }}>Please update profile details before sharing.</p>
+            <Button className="btn-color" onClick={() => navigate("/profile")}>Update Profile</Button>
+          </div>
+        ) : (
+          <>
+            <div style={{ marginBottom: "20px", border: "1px solid #ddd", padding: "15px", borderRadius: "8px" }}>
+              <h5><b>Product Details</b></h5>
+              <p><b>Name:</b> {getValue(product?.productname)}</p>
+              <p><b>Company:</b> {getValue(product?.companyname)}</p>
+              <p><b>Catalogue:</b> {getValue(product?.catalogue)}</p>
+              <p><b>Quantity:</b> {getValue(product?.quantity)}</p>
+            </div>
+            <ReusableForm formConfig={sharingRequestFormConfig()} initialValues={shareInitialValues} onSubmit={handleShareSubmit} />
+          </>
+        )}
       </Modal>
     </>
   );

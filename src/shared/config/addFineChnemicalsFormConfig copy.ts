@@ -7,7 +7,7 @@ const addFineChemicalsFormConfig = (budgetOptions: string[],) => [
   },
   {
     id: "catalogue",
-    label: "catalogue",
+    label: "Catalogue/Article Number",
     type: "text", // changed to text to accept alphanumeric
     validation: { required: true },
   },
@@ -46,7 +46,7 @@ const addFineChemicalsFormConfig = (budgetOptions: string[],) => [
   },
   {
     id: "wvsubqty",
-    label: "W/V/Sub Qty",
+    label: "Quantity Unit",
     type: "text",
     validation: { required: true },
   },

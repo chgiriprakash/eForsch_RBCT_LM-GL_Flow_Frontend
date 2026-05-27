@@ -1,25 +1,30 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthRoutes } from '../modules/Auth';
-import { DashboardRoutes } from '../modules/dashboard';
-import ProtectedRoute from './ProtectedRoute';
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { AuthRoutes } from "../modules/Auth";
+// import ResetPassword from "../modules/Auth/components/ResetPassword";
+import { DashboardRoutes } from "../modules/dashboard";
+import ProtectedRoute from "./ProtectedRoute";
 
 const MainRoutes = () => (
   <Router>
     <Routes>
-      {/* Redirect base path to welcome/login */}
+      {/* Redirect base path */}
       <Route path="/" element={<Navigate to="/auth" />} />
 
-      {/* Auth routes */}
+      {/* PUBLIC routes */}
       <Route path="auth/*" element={<AuthRoutes />} />
+      {/* <Route path="/reset-password" element={<ResetPassword />} /> */}
 
-      {/* Dashboard routes */}
-      <Route path="/*" element={
+      {/* PROTECTED routes */}
+      <Route
+        path="/*"
+        element={
           <ProtectedRoute>
             <DashboardRoutes />
           </ProtectedRoute>
-        } />
+        }
+      /> 
 
-      {/* Fallback for unknown paths */}
+      {/* Fallback */} 
       <Route path="*" element={<Navigate to="/auth/login" />} />
     </Routes>
   </Router>

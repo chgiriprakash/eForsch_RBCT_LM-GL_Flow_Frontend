@@ -7,7 +7,7 @@ const addOrderFineChemicalFormConfig  = (budgetOptions: string[]) => [
     },
     {
         id: "catalogue",
-        label: "catalogue",
+        label: "Catalogue/Article Number​",
         type: "text", // changed to text to accept alphanumeric
         validation: { required: true },
     },
@@ -26,27 +26,27 @@ const addOrderFineChemicalFormConfig  = (budgetOptions: string[]) => [
         pattern: /^[0-9]+$/, // optional: enforces numeric values only
         },
     },
-    {
-        id: "expiryDate",
-        label: "Expiry Date",
-        type: "date",
-        validation: { required: true },
-    },
+   // {
+     //   id: "expiryDate",
+       // label: "Expiry Date",
+        //type: "date",
+        //validation: { required: true },
+    //},
     {
         id: "companyInternalNo",
         label: "Company Internal No",
         type: "text", // changed to text to accept alphanumeric
         validation: { required: true },
     },
-    {
-        id: "sapMaterialNo",
-        label: "SAP Material No",
-        type: "text", // changed to text to accept alphanumeric
-        validation: { required: true },
-    },
+    //{
+    //    id: "sapMaterialNo",
+    //    label: "SAP Material No",
+    //    type: "text", // changed to text to accept alphanumeric
+    //    validation: { required: true },
+    //},
     {
         id: "weightvolsubqty",
-        label: "W/V/Sub Qty",
+        label: "packaging unit",
         type: "text",
         validation: { required: true },
     },
@@ -77,7 +77,7 @@ const addOrderFineChemicalFormConfig  = (budgetOptions: string[]) => [
     },
     {
         id: "price",
-        label: "Price",
+        label: "Price per package unit",
         type: "number", // changed from "number" to "text"
         validation: {
         required: true,
@@ -86,7 +86,7 @@ const addOrderFineChemicalFormConfig  = (budgetOptions: string[]) => [
     },
     {
         id: "remarks",
-        label: "Remarks",
+        label: "Remarks/Name",
         type: "text",
         validation: { required: false },
     },

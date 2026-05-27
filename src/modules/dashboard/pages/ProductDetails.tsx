@@ -7,9 +7,16 @@ import { useEffect, useState } from "react";
 import useAppDispatch from "../../../shared/hooks/useAppDispatch";
 import { useAppSelector } from "../../../shared/hooks/customHooks";
 import ReusableForm from "../../../shared/components/ReusableForm";
-import { addOrder, editProduct, getProductById, getBudgetList, getGroupNames } from "../dashboardSlice";
+import {  addOrder,
+  editProduct,
+  getProductById,
+  getBudgetList,
+  getGroupNames,
+  shareProduct,
+  getProfile, } from "../dashboardSlice";
 import addOrderProdFormConfig from "../../../shared/config/addOrderProdFormConfig";
 import updateProductFormGenInvConfig from "../../../shared/config/updateProductFormGenInvConfig.";
+import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
 
 const ProductDetails = () => {
   const userRole = JSON.parse(localStorage.getItem("user") || "{}");
@@ -28,6 +35,23 @@ const ProductDetails = () => {
   console.log("ProductDetails - order:", order);
   const [budget, setBudget] = useState<string[]>([]);
   const [groupOptions, setGroupOptions] = useState<string[]>([]);
+  const [isShareModalOpen, setIsShareModalOpen] =
+  useState(false);
+
+const [profileMissing, setProfileMissing] =
+  useState(false);
+
+const [shareInitialValues] =
+  useState<any>({
+    slot1Start: "",
+    slot1End: "",
+
+    slot2Start: "",
+    slot2End: "",
+
+    slot3Start: "",
+    slot3End: "",
+  });
   console.log("groupOptions:", groupOptions);
 
   const fetchData = async () => {
@@ -180,11 +204,230 @@ const ProductDetails = () => {
   }, [dispatch, id]);
 
   const handleOrder = () => setIsModalOpen(true);
-  const handleShare = () => {
-    navigate(`/sharing/${id}`, {
-      state: { inventoryType: "generalInventory" },
-    });
-  };
+
+ const handleShare = async () => {
+
+  try {
+
+    const profileResult = await dispatch(
+      getProfile(userRole.id)
+    ).unwrap();
+
+    console.log(
+      "PROFILE RESULT:",
+      profileResult
+    );
+
+    const profileData =
+      profileResult?.data;
+
+    const isProfileIncomplete =
+
+      !profileData ||
+
+      !profileData.firstName ||
+
+      !profileData.email ||
+
+      !profileData.addressLine1 ||
+
+      !profileData.city ||
+
+      !profileData.labName;
+
+    if (isProfileIncomplete) {
+
+      setProfileMissing(true);
+
+      setIsShareModalOpen(true);
+
+      return;
+    }
+
+    setProfileMissing(false);
+
+    setIsShareModalOpen(true);
+
+  } catch (error) {
+
+    console.error(
+      "Profile validation failed:",
+      error
+    );
+
+    setProfileMissing(true);
+
+    setIsShareModalOpen(true);
+  }
+};
+
+const handleShareSubmit = async (
+  formData: Record<string, any>
+) => {
+  try {
+
+    const localUser = JSON.parse(
+      localStorage.getItem("user") || "{}"
+    );
+
+    const localProfile = JSON.parse(
+      localStorage.getItem("profile") || "{}"
+    );
+
+    // ✅ Helper for slot creation
+    const buildSlot = (
+      slotNumber: number,
+      day: string,
+      fromTime: string,
+      toTime: string
+    ) => {
+
+      // Skip empty optional slots
+      if (!day || !fromTime || !toTime) {
+        return null;
+      }
+
+      const today = new Date()
+        .toISOString()
+        .split("T")[0];
+
+      return {
+        timeSlotId: slotNumber,
+        slotNumber,
+
+        day,
+
+        fromTime,
+        toTime,
+
+        startTime: new Date(
+          `${today}T${fromTime}`
+        ).toISOString(),
+
+        endTime: new Date(
+          `${today}T${toTime}`
+        ).toISOString(),
+
+        date: today,
+
+        time: `${fromTime} - ${toTime}`,
+      };
+    };
+
+    // ✅ Build slots array
+    const timeSlots = [
+
+      buildSlot(
+        1,
+        formData.slot1Day,
+        formData.slot1FromTime,
+        formData.slot1ToTime
+      ),
+
+      buildSlot(
+        2,
+        formData.slot2Day,
+        formData.slot2FromTime,
+        formData.slot2ToTime
+      ),
+
+      buildSlot(
+        3,
+        formData.slot3Day,
+        formData.slot3FromTime,
+        formData.slot3ToTime
+      ),
+
+    ].filter(Boolean);
+
+    const payload = {
+
+      productId: Number(id),
+
+      quantity: Number(formData.quantity),
+
+      inventoryType: "generalInventory",
+
+      timeSlots,
+
+      // ✅ USER
+      user: {
+
+        id: localUser?.id || 0,
+
+        userId: localUser?.userId || "",
+
+        email: localUser?.email || "",
+
+        name: localUser?.name || "",
+
+        role: localUser?.role || "",
+
+        groupName:
+          localUser?.groupName || "",
+
+        status:
+          localUser?.status || "",
+      },
+
+      // ✅ ADDRESS
+      address: {
+
+        line1:
+          localProfile?.address?.line1 ||
+          localProfile?.addressLine1 ||
+          "",
+
+        line2:
+          localProfile?.address?.line2 ||
+          localProfile?.addressLine2 ||
+          "",
+
+        city:
+          localProfile?.address?.city ||
+          localProfile?.city ||
+          "",
+
+        state:
+          localProfile?.address?.state ||
+          localProfile?.state ||
+          "",
+
+        postalCode:
+          localProfile?.address?.postalCode ||
+          localProfile?.postalCode ||
+          "",
+
+        country:
+          localProfile?.address?.country ||
+          localProfile?.country ||
+          "",
+      },
+    };
+
+    console.log(
+      "🚀 FINAL SHARE PAYLOAD:",
+      payload
+    );
+
+    await dispatch(
+      shareProduct(payload)
+    ).unwrap();
+
+    alert("Product shared successfully!");
+
+    setIsShareModalOpen(false);
+
+    navigate("/sharing");
+
+  } catch (error) {
+
+    console.error("Share failed:", error);
+
+    alert("Failed to share product.");
+  }
+};
+  
   const handleUpdate = () => setIsProductModalOpen(true);
 
   const handleOrderSubmit: (formData: Record<string, any>) => Promise<void> = async (formData) => {
@@ -390,6 +633,110 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
           onSubmit={handleProductSubmit}
         />
       </Modal>
+
+      <Modal
+  isOpen={isShareModalOpen}
+  onClose={() =>
+    setIsShareModalOpen(false)
+  }
+  title="Share Product"
+>
+
+  {profileMissing ? (
+
+    <div>
+
+      <p
+        style={{
+          color: "red",
+          fontWeight: "bold",
+        }}
+      >
+        Please update profile details
+        before sharing.
+      </p>
+
+      <Button
+        className="btn-color"
+        onClick={() =>
+          navigate("/profile")
+        }
+      >
+        Update Profile
+      </Button>
+
+    </div>
+
+  ) : (
+
+    <>
+
+      {/* PRODUCT DETAILS */}
+
+      <div
+        style={{
+          marginBottom: "20px",
+          border: "1px solid #ddd",
+          padding: "15px",
+          borderRadius: "8px",
+        }}
+      >
+
+        <h5>
+          <b>Product Details</b>
+        </h5>
+
+        <p>
+          <b>Name:</b>{" "}
+          {getValue(
+            product?.productname
+          )}
+        </p>
+
+        <p>
+          <b>Company:</b>{" "}
+          {getValue(
+            product?.companyname
+          )}
+        </p>
+
+        <p>
+          <b>Catalogue:</b>{" "}
+          {getValue(
+            product?.catalogue
+          )}
+        </p>
+
+        <p>
+          <b>Quantity:</b>{" "}
+          {getValue(
+            product?.quantity
+          )}
+        </p>
+
+      </div>
+
+      {/* SHARE FORM */}
+
+      <ReusableForm
+        formConfig={
+          sharingRequestFormConfig()
+        }
+
+        initialValues={
+          shareInitialValues
+        }
+
+        onSubmit={
+          handleShareSubmit
+        }
+      />
+
+    </>
+
+  )}
+
+</Modal>
     </>
   );
 };

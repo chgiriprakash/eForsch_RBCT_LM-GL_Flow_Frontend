@@ -20,6 +20,27 @@ const navigationConfig = [
         roles: ['admin', 'groupleader', 'podept', 'purchase department', 'scientist','labMgmt'],
     },
     {
+        icon: 'fa fa-folder-open',
+        title: 'Projects',
+        link: '/project',
+        description: 'where ideas become organized research!',
+        roles: ['admin', 'groupleader', 'scientist'],
+    },
+    {
+        icon: 'fa fa-book',
+        title: 'Notebook',
+        link: '/notebook',
+        description: 'Your central space for documentation, references, and quick notes.',
+        roles: ['admin', 'groupleader', 'scientist'],
+    },
+    {
+        icon: 'fa fa-cogs',
+        title: 'Budget',
+        link: '/budget',
+        description: 'Where science meets cents—track your spending like a financial wizard in the lab!',
+        roles: ['admin', 'groupleader', 'labMgmt'],
+    },
+    {
         icon: 'fa fa-share-alt',
         title: 'Sharing',
         link: '/sharing',
@@ -40,13 +61,6 @@ const navigationConfig = [
         description: 'The treasure chest of “how-to” guides for your experiments. Science ninjas, unite!',
         roles:  ['admin', 'groupleader', 'scientist', 'labMgmt'], // ['admin'] Only visible to Admins
     },
-    {
-        icon: 'fa fa-cogs',
-        title: 'Budget',
-        link: '/budget',
-        description: 'Where science meets cents—track your spending like a financial wizard in the lab!',
-        roles: ['admin', 'groupleader', 'labMgmt'],
-    }
 ];
 
 export default navigationConfig;

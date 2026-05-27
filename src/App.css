@@ -92,6 +92,10 @@
 }
 
 .btnWrapper {
+  position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding-top: 10px;
   display: flex;
     justify-content: space-between;
     align-items: center;
@@ -121,7 +125,7 @@
     margin: 0;
 }
 
-.btn-color, .btn-color:hover {
+.btn-color, .btn-btn-color,  .btn-color:hover, .btn-btn-color:hover {
   background-color: #0069c4 !important;
     color: #fff !important;
     font-size: 14px;
@@ -134,6 +138,9 @@
 
 .table-wrapper {
   margin-top: 20px;
+    display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .table-container {
@@ -576,13 +583,20 @@ select:focus {
   }
 }
 
+.container {
+  height: calc(100vh - 120px); /* subtract navbar */
+  display: flex;
+  flex-direction: column;
+}
+
 /* Apply custom styles to the scrollable container */
 .scrollable-container {
-  max-height: 300px; 
-  overflow-y: auto; 
-  scrollbar-width: thin; 
-  scrollbar-color: #b8b8b8 #f1f1f1; 
+  max-height: calc(100vh - 250px); /* 🔥 adjust offset */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b8b8b8 #f1f1f1;
   margin-top: 10px;
+  
 }
 
 /* Custom scrollbar for Webkit browsers (Chrome, Edge, Safari) */
@@ -663,8 +677,17 @@ select:focus {
     padding: 0;
 }
 
+/* Limit modal height */
 .modal-content {
-  /* margin-top: 20px; */
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Make form scrollable */
+.modal-content form {
+    overflow-y: auto;
+    flex: 1;
 }
 
 .upload-wrapper, .upload-wrapper:hover{
@@ -751,6 +774,14 @@ select:focus {
 
 .card:nth-child(6) {
   background: linear-gradient(145deg, #00bcd4, #4dd0e1); /* Bright Teal / Cyan */
+}
+
+.card:nth-child(7) {
+  background: linear-gradient(145deg, #3f51b5, #7986cb); /* Bright Teal / Cyan */
+}
+
+.card:nth-child(8) {
+  background: linear-gradient(145deg, #fa5454, #eb3c3c); /* Bright Teal / Cyan */
 }
 
 /* Hover Effects */
@@ -952,7 +983,7 @@ select:focus {
     font-size: 14px;
     border: none;
     outline: none !important;
-    margin: 0 2px;
+    /* margin: 0 2px; */
     box-shadow: none !important;
     padding: 0.75rem;
     border-radius: 10px;
@@ -1064,26 +1095,108 @@ select:focus {
 
 .product-details-table {
   width: 100%;
-  border-collapse: collapse;
+  table-layout: fixed; /* 🔥 IMPORTANT */
 }
 
-.product-details-table th,
-.product-details-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-}
-
+.product-details-table td,
 .product-details-table th {
-  background-color: #f4f4f4;
-  text-align: center;
-  font-size: 1.2em;
-}
-
-.product-details-table td {
-  background-color: #fff;
+  border: 1px solid #ddd;
+  padding: 10px;
+  vertical-align: top;
+  word-break: break-word;   /* 🔥 FIX LONG TEXT */
+  white-space: normal;      /* 🔥 ALLOW WRAP */
 }
 
 .product-details-table td:first-child {
-  font-weight: bold;
-  width: 40%;
+  width: 200px; /* label column */
+  font-weight: 600;
+  background: #f8f9fa;
+}
+
+.product-details-table td:last-child {
+  width: auto;
+}
+
+.product-details-table td div {
+  max-height: 300px;     /* 🔥 SCROLLABLE AREA */
+  overflow-y: auto;
+}
+
+.product-details-table td p {
+  margin-bottom: 8px;
+}
+
+.ql-toolbar.ql-snow, .ql-container.ql-snow {
+  background-color: #fff;
+}
+
+.text-editor {
+      width: 100%;
+    padding: 0.5rem 0.8rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    transition: border-color 0.3s ease;
+    font-family: "Gothic A1", sans-serif;
+    font-weight: 300;
+    font-style: normal;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.quill .ql-container {
+    height: 200px !important;
+    display: flex;
+    flex-direction: column;
+}
+
+.quill .ql-editor {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.nav-btn {
+  background: transparent;
+  border: none;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #333;
+}
+
+.nav-btn:hover {
+  color: #0d6efd;
+}
+
+.nav-btn.logout {
+  color: red;
+}
+
+.notification {
+  position: relative;
+}
+
+.notification .dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  background: red;
+  border-radius: 50%;
+}
+
+.notification.animate {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }

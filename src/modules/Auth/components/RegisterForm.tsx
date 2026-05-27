@@ -2,209 +2,364 @@ import { useState, useEffect } from "react";
 import InputField from "../../../shared/components/InputField";
 import { Link, useNavigate } from "react-router-dom";
 import useAppDispatch from "../../../shared/hooks/useAppDispatch";
-import { registerUser, getGroupNames, getRoles } from "../authSlice";
+import {
+  registerUser,
+  getGroupNames,
+  getRoles,
+  sendOtp,
+  validateOTP,
+  resendOTPForEmail,
+} from "../authSlice";
 import Toast from "../../../shared/components/Toast";
 import { validateField } from "../../../shared/utils/validation";
+import { Button } from "react-bootstrap";
+import otpFormConfig from "../../../shared/config/otpFormConfig";
+import Modal from "../../../shared/components/Modal";
 
 const RegisterForm: React.FC<{ formConfig: any[] }> = ({ formConfig }) => {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate(); 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"success" | "error">("success");
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [groupOptions, setGroupOptions] = useState<{}[]>([]);
-  const [roleOptions, setRoleOptions] = useState<{}[]>([]);
-  console.log("RegisterForm - roleOptions state:", roleOptions);
   const [dynamicFormConfig, setDynamicFormConfig] = useState<any[]>(formConfig);
 
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpData, setOtpData] = useState<any>({});
+  const [otpErrors] = useState<any>({});
 
-  // ✅ Handle input field changes
+  // ======================
+  // Handle Change
+  // ======================
   const handleChange = (id: string, value: any) => {
     setFormData((prev) => {
-      let updatedData = { ...prev, [id]: value };
-      console.log("RegisterForm - handleChange - updatedData:", updatedData);
+      let updated = { ...prev, [id]: value };
 
       if (id === "role") {
-        // Always clear groupName when role changes
-        delete updatedData.groupName;
-
-        // If role requires group selection
-        if (value === "scientist") {
-          fetchGroupNames();
-        }
+        delete updated.groupName;
+        if (value === "scientist") fetchGroupNames();
       }
 
-      return updatedData;
+      if (id === "email") {
+        setIsEmailVerified(false);
+      }
+
+      return updated;
     });
   };
 
-  // ✅ Fetch roles and update the role field in formConfig
-  const fetchRoles = async () => {
-  try {
-    const result = await dispatch(getRoles()).unwrap();
-    if (result?.roles?.length > 0) {
-      const roleNames = result.roles.map((role: any) => ({
-        key: role.key,
-        label: role.label,
-      }));
-      // const roleNames = result.roles
-      //                   .filter((role: any) => role.label !== "Admin")
-      //                   .map((role: any) => role.label);
+  const handleOtpChange = (id: string, value: any) => {
+    setOtpData((prev: any) => ({ ...prev, [id]: value }));
+  };
 
-      const updatedConfig = formConfig.map((field) =>
-        field.id === "role" ? { ...field, options: roleNames } : field
+  // ======================
+  // Fetch Roles
+  // ======================
+  const fetchRoles = async () => {
+    try {
+      const result = await dispatch(getRoles()).unwrap();
+      const roleNames = result.roles.map((r: any) => ({
+        key: r.key,
+        label: r.label,
+      }));
+
+      const updatedConfig = formConfig.map((f) =>
+        f.id === "role" ? { ...f, options: roleNames } : f
       );
 
-      console.log("Fetched roles:", roleNames);
-      console.log("RegisterForm - fetchRoles - updatedConfig:", updatedConfig);
-      setRoleOptions(roleNames);
       setDynamicFormConfig(updatedConfig);
-    } else {
-      console.error("No roles received from API:", result);
-    }
-  } catch (error) {
-    console.error("Failed to fetch roles:", error);
-  }
-};
-
-  // ✅ Fetch group names
-  const fetchGroupNames = async () => {
-    try {
-      const result = await dispatch(getGroupNames()).unwrap();
-      if (result.length > 0) {
-        // const groupNames = result.map((group: { groupName: string }) => ({
-        //   id: group.groupName,
-        //   name: group.groupName,
-        // }));
-
-        const groupNames = result.map((groupNames: any) => groupNames.groupName);
-
-        console.log("Fetched group names:", groupNames);
-        setGroupOptions(groupNames);
-      }
-    } catch (error) {
-      console.error("Failed to fetch group names:", error);
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  // ✅ Create a group when role is Admin
-  // const handleCreateGroup = async (role: string) => {
-  //   if (role === "groupleader") {
-  //     try {
-  //       const fullName = `${formData.fname}Group}`.trim();
-  //       console.log("RegisterForm - handleCreateGroup - fullName:", fullName);
-  //       const result = await dispatch(createGroup({ groupName: fullName })).unwrap();
-  //       console.log("RegisterForm - handleCreateGroup - result:", result);
-  //       if (result) {
-  //         setToastMessage("Group created successfully!");
-  //         setToastType("success");
-  //       }
-  //     } catch (error) {
-  //       console.error("Failed to create group:", error);
-  //       setToastMessage("Failed to create group.");
-  //       setToastType("error");
-  //     }
-  //   }
-  // };
+  // ======================
+  // Fetch Groups
+  // ======================
+  const fetchGroupNames = async () => {
+    try {
+      const result = await dispatch(getGroupNames()).unwrap();
+      setGroupOptions(result.map((g: any) => g.groupName));
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-  // ✅ Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchRoles();
+  }, []);
+
+  // ======================
+  // SEND OTP
+  // ======================
+  const handleVerifyEmail = async () => {
+    if (!formData.email) {
+      setToastMessage("Enter email first");
+      setToastType("error");
+      return;
+    }
+
+    try {
+      const result = await dispatch(sendOtp({ email: formData.email })).unwrap();
+
+      if (result?.status === "success") {
+        setToastMessage("OTP sent");
+        setToastType("success");
+        setShowOtpModal(true);
+      } else {
+        setToastMessage(result?.message || "Failed to send OTP");
+        setToastType("error");
+      }
+    } catch (err: any) {
+      setToastMessage(err || "Failed to send OTP");
+      setToastType("error");
+    }
+  };
+
+  // ======================
+  // VERIFY OTP
+  // ======================
+  const handleVerifyOtp = async () => {
+    try {
+      const result = await dispatch(
+        validateOTP({
+          email: formData.email,
+          otp: otpData.otp,
+        })
+      ).unwrap();
+
+      if (result?.status === "success") {
+        setIsEmailVerified(true);
+        setShowOtpModal(false);
+        setToastMessage("Email verified ✅");
+        setToastType("success");
+      } else {
+        setToastMessage(result?.message || "Invalid OTP");
+        setToastType("error");
+      }
+    } catch (err: any) {
+      setToastMessage(err || "Invalid OTP");
+      setToastType("error");
+    }
+  };
+
+  // ======================
+  // RESEND OTP
+  // ======================
+  const handleResendOtp = async () => {
+    try {
+      const result = await dispatch(
+        resendOTPForEmail({ email: formData.email })
+      ).unwrap();
+
+      if (result?.status === "success") {
+        setToastMessage("OTP resent");
+        setToastType("success");
+      } else {
+        setToastMessage(result?.message || "Failed to resend OTP");
+        setToastType("error");
+      }
+    } catch (err: any) {
+      setToastMessage(err || "Failed to resend OTP");
+      setToastType("error");
+    }
+  };
+
+  // ======================
+  // SUBMIT
+  // ======================
+ const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!isEmailVerified) {
+      setToastMessage("Please verify email first");
+      setToastType("error");
+      return;
+    }
+
     const newErrors: Record<string, string> = {};
+    const role = formData.role?.toLowerCase();
+
     dynamicFormConfig.forEach(({ id, validation }) => {
-      if (id === "groupName" && formData.role !== "Admin" && formData.role !== "Scientist") return;
+      if (id === "verifyEmail") return;
+
+      if (id === "groupName" && role !== "scientist") return;
+
       const error = validateField(id, formData[id], validation);
       if (error) newErrors[id] = error;
     });
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      alert("Please fix the errors before submitting.");
+      setToastMessage("Please fix the errors before submitting.");
+      setToastType("error");
       return;
     }
 
     try {
-      // await handleCreateGroup(formData.role);
+      const payload = { ...formData };
 
-      // Map formData to RegisterUserData type
-      const registerData = {
-        // name: `${formData.fname || ""} ${formData.lname || ""}`.trim(),
-        fname: formData.fname,
-        lname: formData.lname,
-        email: formData.email,
-        password: formData.password,
-        retypePassword: formData.retypePassword,
-        role: formData.role,
-        groupName: formData.role === "podept" || formData.role === "labMgmt"
-                    ? ""
-                    : formData.groupName
-                      ? formData.groupName
-                      : `${formData.fname}Group`.trim(),
-        // add any other required fields here
-      };
+      // 🔥 ROLE-BASED STATUS
+      if (role === "scientist") {
+        payload.status = "pending";
+      } else {
+        payload.status = "approved";
+      }
 
-      const result = await dispatch(registerUser(registerData)).unwrap();
+      // 🔥 GROUP NAME LOGIC (NEW FIX)
+      if (role === "podept" || role === "labmgmt") {
+        payload.groupName = "";
+      } 
+      else if (role === "groupleader") {
+        payload.groupName = formData.groupName
+          ? formData.groupName
+          : `${formData.fname || ""}Group`.trim();
+      } 
+      else if (role === "scientist") {
+        payload.groupName = formData.groupName;
+      }
+
+      const result = await dispatch(registerUser(payload)).unwrap();
 
       if (result?.status === "success") {
-        setToastMessage("Registration successful!");
+        setToastMessage("Registration successful");
         setToastType("success");
-        navigate("/auth/login");
+
+        if (role === "scientist") {
+          navigate("/auth/waiting-approval", { replace: true });
+        } else {
+          navigate("/auth/login", { replace: true });
+        }
       } else {
-        setToastMessage("Registration failed. Please check your details.");
+        setToastMessage("Registration failed");
         setToastType("error");
       }
-    } catch (error) {
-      console.error("Registration Error:", error);
-      setToastMessage("An error occurred during registration.");
+    } catch (err: any) {
+      setToastMessage(err || "Registration failed");
       setToastType("error");
     }
   };
 
-  // ✅ Call fetchRoles on initial render
-  useEffect(() => {
-    fetchRoles();
-  }, []);
 
   return (
     <>
-      <form className="row g-2 align-items-center form" onSubmit={handleSubmit}>
+      <form className="row g-2 form" onSubmit={handleSubmit}>
         {dynamicFormConfig.map((field) => {
-        if (
-          field.id === "groupName" &&
-          // formData.role !== "groupleader" &&
-          formData.role !== "scientist"
-        ) {
-          return null;
-        }
+          if (field.id === "groupName" && formData.role !== "scientist") {
+            return null;
+          }
 
-        return (
+         if (field.id === "email") {
+            return (
+              <div key="email" className="row align-items-end g-0">
+
+                {/* Email Input */}
+                <InputField
+                  id={field.id}
+                  label={field.label}
+                  type={field.type}
+                  value={formData[field.id] || ""}
+                  validation={field.validation}
+                  error={errors[field.id]}
+                  onChange={handleChange}
+                  isLoggedIn={false}
+                  totalFields={dynamicFormConfig.length}
+                  colSize="col-9" 
+                />
+
+                {/* Verify Button */}
+                <div className="col-3 d-flex align-items-end">
+                  <Button
+                    className="w-100"
+                    variant={isEmailVerified ? "success" : "btn-color"}
+                    onClick={handleVerifyEmail}
+                    disabled={isEmailVerified}
+                  >
+                    {isEmailVerified ? "Email Verified" : "Verify Email"}
+                  </Button>
+                </div>
+
+              </div>
+            );
+          }
+
+          if (field.id === "verifyEmail") return null;
+
+          return (
+            <InputField
+              key={field.id}
+              id={field.id}
+              label={field.label}
+              type={field.type}
+              value={formData[field.id] || ""}
+              options={
+                field.id === "groupName"
+                  ? groupOptions
+                  : field.options
+              }
+              validation={field.validation}
+              error={errors[field.id]}
+              onChange={handleChange}
+              isLoggedIn={false}
+              totalFields={dynamicFormConfig.length}
+            />
+          );
+        })}
+
+        <div className="col-12 btnWrapper">
+          <button
+            type="submit"
+            className="btn btn-color"
+            disabled={!isEmailVerified}
+          >
+            Register
+          </button>
+          <Link to="/auth/login">Already have an account?</Link>
+        </div>
+      </form>
+
+      {/* OTP MODAL */}
+      <Modal
+        isOpen={showOtpModal}
+        onClose={() => setShowOtpModal(false)}
+        title="Verify Email"
+      >
+        {otpFormConfig.map((field) => (
           <InputField
             key={field.id}
             id={field.id}
             label={field.label}
             type={field.type}
-            value={formData[field.id] || ""}
-            options={
-              field.id === "groupName"
-                ? groupOptions
-                : field.options
-            }
+            value={otpData[field.id] || ""}
             validation={field.validation}
-            error={errors[field.id]}
-            onChange={handleChange}
+            error={otpErrors[field.id]}
+            onChange={handleOtpChange}
             isLoggedIn={false}
+            totalFields={1}
           />
-        );
-      })}
+        ))}
 
+        <div className="col-12 btnWrapper mt-3">
+          <button
+            type="button"
+            className="btn btn-color"
+            onClick={handleVerifyOtp}
+          >
+            Verify OTP
+          </button>
 
-        <div className="col-12 btnWrapper">
-          <button type="submit" className="btn btn-color">Register</button>
-          <Link to="/auth/login">Already have an account?</Link>
+          <button
+            type="button"
+            className="btn btn-link"
+            onClick={handleResendOtp}
+          >
+            Resend OTP
+          </button>
         </div>
-      </form>
+      </Modal>
 
       {toastMessage && (
         <Toast

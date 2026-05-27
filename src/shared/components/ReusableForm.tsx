@@ -1,34 +1,47 @@
 import React, { useState, useEffect } from "react";
 import InputField from "./InputField";
-// import Files from "react-files";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 
 type FormField = {
-  options?: string[];
+  options?: any[];
   id: string;
   label: string;
   type: string;
+
+  multiple?: boolean;
+  accept?: string;
+  maxFiles?: number;
+
   validation?: {
     required?: boolean;
     minLength?: number;
     pattern?: RegExp;
   };
+
   showIf?: {
     field: string;
     value: any;
   };
+
+  breakAfter?: boolean;
 };
 
 type FormProps = {
   formConfig: FormField[];
   initialValues: Record<string, any>;
   onSubmit: (formData: Record<string, any>) => void;
+  disabled?: boolean;
 };
 
-const ReusableForm: React.FC<FormProps> = ({ formConfig, initialValues, onSubmit }) => {
+const ReusableForm: React.FC<FormProps> = ({
+  formConfig,
+  initialValues,
+  onSubmit,
+  disabled = false,
+}) => {
   const [formData, setFormData] = useState<Record<string, any>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastType, setToastType] = useState<"success" | "error">("success");
 
   useEffect(() => {
     setFormData(initialValues);
@@ -41,39 +54,43 @@ const ReusableForm: React.FC<FormProps> = ({ formConfig, initialValues, onSubmit
     }));
   };
 
-  const handleFileChange = (files: any[]) => {
-    if (files && files.length > 0) {
-      // console.log("Selected file:", files[0]);
-      setFormData((prev) => ({
-        ...prev,
-        attachment: files[0], // ✅ directly store the File object
-      }));
-    } else {
-      // console.log("No file selected");
-      setFormData((prev) => ({
-        ...prev,
-        attachment: null,
-      }));
+  // ✅ FIXED FILE HANDLER (append + limit)
+  const handleFileChange = (files: File[], field: FormField) => {
+    const existingFiles = formData[field.id] || [];
+    const totalFiles = [...existingFiles, ...files];
+
+    if (field.maxFiles && totalFiles.length > field.maxFiles) {
+      alert(`Maximum ${field.maxFiles} files allowed`);
+      return;
     }
+
+    setFormData((prev) => ({
+      ...prev,
+      [field.id]: totalFiles,
+    }));
   };
 
-
   const validateField = (id: string, value: any, validation: any) => {
-    console.log("Validating field:", id, value, validation);
+    console.log(`Validating field: ${id} with value:`, value, "and rules:", validation);
     if (!validation) return "";
 
-    if (validation.required && !value) return "This field is required.";
-    if (validation.minLength && value.length < validation.minLength)
+    if (validation.required && !value)
+      return "This field is required.";
+
+    if (validation.minLength && value?.length < validation.minLength)
       return `Minimum length is ${validation.minLength} characters.`;
-    if (validation.pattern && !validation.pattern.test(value)) return "Invalid format.";
+
+    if (validation.pattern && !validation.pattern.test(value))
+      return "Invalid format.";
 
     return "";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (disabled) return;
+
     const newErrors: Record<string, string> = {};
-    console.log("ReusableForm - newErrors initialized:", newErrors);
 
     formConfig.forEach(({ id, validation, showIf }) => {
       const shouldShow =
@@ -81,7 +98,6 @@ const ReusableForm: React.FC<FormProps> = ({ formConfig, initialValues, onSubmit
 
       if (shouldShow) {
         const error = validateField(id, formData[id], validation);
-        console.log("ReusableForm - field validation error for", id, ":", error);
         if (error) newErrors[id] = error;
       }
     });
@@ -91,54 +107,120 @@ const ReusableForm: React.FC<FormProps> = ({ formConfig, initialValues, onSubmit
       return;
     }
 
-    try {
-      await onSubmit(formData);
-      setToastMessage("Form submitted successfully!");
-      setToastType("success");
-    } catch (error) {
-      setToastMessage("Failed to submit form!");
-      setToastType("error");
-    }
+    await onSubmit(formData);
   };
 
   return (
-    <>
-      <form className="row gy-2 align-items-center" onSubmit={handleSubmit}>
-        {formConfig.map((field) => {
-          const shouldShow =
-            !field.showIf || formData[field.showIf.field] === field.showIf.value;
+    <form className="row gy-2 align-items-center" onSubmit={handleSubmit}>
+      {formConfig.map((field) => {
+        const shouldShow =
+          !field.showIf ||
+          formData[field.showIf.field] === field.showIf.value;
 
-          if (!shouldShow) return null;
+        if (!shouldShow) return null;
 
-          return (
-            <React.Fragment key={field.id}>
-              {field.type === "file" ? (
-                <div className="files">
-                  {/* <Files
-                    className="files-dropzone"
-                    onChange={handleFileChange}
-                    onError={(error: any) =>
-                      console.error("File upload error:", error)
-                    }
-                    accepts={[".pdf"]}
-                    multiple
-                    maxFileSize={10000000}
-                    minFileSize={0}
-                    clickable
-                  >
-                    Drop files here or click to upload
-                  </Files> */}
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    className="files-dropzone"
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      handleFileChange(files ? Array.from(files) : []);
-                    }}
-                  />
-                </div>
-              ) : (
+        return (
+          <React.Fragment key={field.id}>
+
+            {/* ✅ FILE INPUT */}
+            {field.type === "file" && (
+              <div className="files col-12">
+                <label className="col-form-label label">
+                  {field.label} (
+                  {formData[field.id]?.length || 0} /{" "}
+                  {field.maxFiles || 5})
+                </label>
+
+                <input
+                  key={formData[field.id]?.length} // ✅ reset input
+                  type="file"
+                  className="files-dropzone"
+                  multiple={field.multiple}
+                  accept={
+                    field.accept ||
+                    ".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                  }
+                  disabled={
+                    disabled ||
+                    (formData[field.id]?.length >=
+                      (field.maxFiles || 5))
+                  }
+                  onChange={(e) => {
+                    const files = e.target.files
+                      ? Array.from(e.target.files)
+                      : [];
+                    handleFileChange(files, field);
+                  }}
+                />
+
+                {/* ✅ FILE LIST */}
+                {formData[field.id]?.length > 0 && (
+                  <div className="mt-2">
+                    {formData[field.id].map(
+                      (file: File, index: number) => (
+                        <div
+                          key={index}
+                          className="d-flex justify-content-between align-items-center m-2"
+                        >
+                          <span>{file.name}</span>
+
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger"
+                            onClick={() => {
+                              const updatedFiles = [
+                                ...(formData[field.id] || []),
+                              ];
+                              updatedFiles.splice(index, 1);
+
+                              setFormData((prev) => ({
+                                ...prev,
+                                [field.id]: updatedFiles,
+                              }));
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+
+                {errors[field.id] && (
+                  <div className="text-danger">
+                    {errors[field.id]}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ✅ RICH TEXT */}
+            {field.type === "richtext" && (
+              <div className="col-12">
+                <label className="col-form-label label">
+                  {field.label}
+                </label>
+                <ReactQuill
+                  theme="snow"
+                  value={formData[field.id] || ""}
+                  onChange={(value) =>
+                    handleChange(field.id, value)
+                  }
+                  readOnly={disabled}
+                />
+                {errors[field.id] && (
+                  <div className="text-danger">
+                    {errors[field.id]}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ✅ DEFAULT INPUT */}
+          <>
+            {field.type !== "file" &&
+              field.type !== "richtext" && (
                 <InputField
                   id={field.id}
                   label={field.label}
@@ -149,35 +231,38 @@ const ReusableForm: React.FC<FormProps> = ({ formConfig, initialValues, onSubmit
                   error={errors[field.id]}
                   onChange={handleChange}
                   isLoggedIn={true}
+                  totalFields={formConfig.length}
+                  disabled={disabled}
                 />
-              )}
-            </React.Fragment>
-          );
-        })}
-        <div className="col-12 btnWrapper">
-          <button type="submit" className="btn btn-color">
-            Submit
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setFormData(initialValues)}
-          >
-            Reset
-          </button>
-        </div>
-      </form>
+            )}
 
-      {toastMessage && (
-        <div
-          className={`toast ${
-            toastType === "success" ? "toast-success" : "toast-error"
-          }`}
+            {field.breakAfter && (
+              <div className="col-12"></div>
+            )}
+          </>
+          </React.Fragment>
+        );
+      })}
+
+      {/* ✅ FIXED BUTTON AREA */}
+      <div className="col-12 btnWrapper">
+        <button
+          type="submit"
+          className="btn btn-color"
+          disabled={disabled}
         >
-          {toastMessage}
-        </div>
-      )}
-    </>
+          Submit
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => setFormData(initialValues)}
+        >
+          Reset
+        </button>
+      </div>
+    </form>
   );
 };
 

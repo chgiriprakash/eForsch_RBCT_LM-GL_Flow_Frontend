@@ -1,5 +1,12 @@
 import { library } from "@fortawesome/fontawesome-svg-core";
-import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
+import {
+  faRightFromBracket,
+  faUser,
+  faBell,
+  faUsers,
+  faBox,
+} from "@fortawesome/free-solid-svg-icons";
+
 import useAppDispatch from "../../../shared/hooks/useAppDispatch";
 import { useLocation, useNavigate } from "react-router-dom";
 import { logoutUser } from "../../Auth/authSlice";
@@ -8,24 +15,23 @@ import { Nav, Navbar } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { getNotifications } from "../dashboardSlice";
 
-// Add icons to the library so they can be used in components
-library.add(faRightFromBracket);
+library.add(faRightFromBracket, faUser, faBell, faUsers, faBox);
 
 type Notification = {
   read: boolean;
-  // Add other properties as needed
 };
 
 const NavBar: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const userRole = JSON.parse(localStorage.getItem("user") || "{}");
+
   const [data, setData] = useState<Notification[]>([]);
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const location = useLocation();
-  const [title, setTitle] = useState<string | undefined>();
-  // Determine if there are unread notifications
-  const hasUnread = data.some(notification => notification.read === false);
+  const [title, setTitle] = useState<string>();
+
+  const hasUnread = data.some((n) => n.read === false);
 
   useEffect(() => {
     const result = location.pathname.startsWith("/")
@@ -36,14 +42,12 @@ const NavBar: React.FC = () => {
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    if (storedUser) setUser(JSON.parse(storedUser));
   }, []);
 
   useEffect(() => {
     fetchNotification();
-  }, [dispatch]);
+  }, []);
 
   const fetchNotification = async () => {
     try {
@@ -54,47 +58,20 @@ const NavBar: React.FC = () => {
     }
   };
 
-  const handleNotificationNavigation = () => {
-    navigate("/notifications");
-  }
-
-  const handleUserNavigation = () => {
-    navigate("/Users");
-  }
-
-  const handleOrdersNavigation = () => {
-    navigate("/orders");
-  }
+  // 🔽 Navigation handlers
+  const goTo = (path: string) => navigate(path);
 
   const handleLogout = async () => {
     const token = localStorage.getItem("authToken");
 
-    if (!token) {
-      console.warn("No auth token found, logging out user.");
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
-      setUser(null);
-      navigate("/");
-      return;
-    }
-
     try {
-      console.log("Logging out user...");
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
-      setUser(null);
-      await dispatch(logoutUser(token)).unwrap();
-      console.log("Logout successful!");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
-      setUser(null);
-      navigate("/");
+      if (token) {
+        await dispatch(logoutUser(token)).unwrap();
+      }
+    } catch (err) {
+      console.error("Logout failed:", err);
     } finally {
-      console.log("Clearing localStorage and redirecting to home page.");
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
+      localStorage.clear();
       setUser(null);
       navigate("/");
     }
@@ -102,35 +79,58 @@ const NavBar: React.FC = () => {
 
   return (
     <div className="boxNav d-flex justify-content-between align-items-center">
-      <h5>{title}</h5>
+      <h5 className="mb-0 text-capitalize">{title}</h5>
 
-      <div className="user-info d-flex align-items-center">
-        <span className="mr-3">
+      <div className="user-info d-flex align-items-center gap-3">
+        <span>
           {user ? (
-            <Navbar.Text>Welcome, {user.name}</Navbar.Text>
+            <Navbar.Text>
+              👋 Welcome, <strong>{user.name}</strong>
+            </Navbar.Text>
           ) : (
-            <p>No user data found. Please log in.</p>
+            <span>Please log in</span>
           )}
         </span>
-        <Nav>
-          <button onClick={handleUserNavigation}>
-            <strong>Users</strong>
-            {/* <FontAwesomeIcon icon={faRightFromBracket} /> */}
-          </button>
-          | 
-          <button onClick={handleOrdersNavigation}>
-            <strong>Orders</strong>
-            {/* <FontAwesomeIcon icon={faRightFromBracket} /> */}
-          </button>
-          | 
-          <button 
-            onClick={handleNotificationNavigation} 
-            className={hasUnread ? "notification-button animate" : "notification-button"}
+
+        <Nav className="d-flex align-items-center gap-2">
+
+          {/* 👤 PROFILE */}
+          <button
+            className="nav-btn"
+            onClick={() => goTo("/profile")}
           >
-            <i className="fa fa-bell text-danger"></i>
+            <FontAwesomeIcon icon={faUser} /> Profile
           </button>
-          | 
-          <button onClick={handleLogout}>
+
+          {/* 👥 USERS */}
+          <button
+            className="nav-btn"
+            onClick={() => goTo("/users")}
+          >
+            <FontAwesomeIcon icon={faUsers} /> Users
+          </button>
+
+          {/* 📦 ORDERS */}
+          <button
+            className="nav-btn"
+            onClick={() => goTo("/orders")}
+          >
+            <FontAwesomeIcon icon={faBox} /> Orders
+          </button>
+
+          {/* 🔔 NOTIFICATIONS */}
+          <button
+            onClick={() => goTo("/notifications")}
+            className={`nav-btn notification ${
+              hasUnread ? "animate" : ""
+            }`}
+          >
+            <FontAwesomeIcon icon={faBell} />
+            {hasUnread && <span className="dot"></span>}
+          </button>
+
+          {/* 🚪 LOGOUT */}
+          <button className="nav-btn logout" onClick={handleLogout}>
             <FontAwesomeIcon icon={faRightFromBracket} />
           </button>
         </Nav>

@@ -9,22 +9,29 @@ const Inventory = () => {
     {
       icon: 'fa fa-flask',
       title: 'General Inventory',
-      link: '/inventory/General-inventory',
+      link: '/inventory/general-inventory',
       description: 'Track and manage all non-chemical lab essentials in one place.',
       roles: ['admin', 'groupleader', 'scientist', 'labMgmt'],
     },
     {
       icon: 'fa fa-flask',
       title: 'Fine Chemicals',
-      link: '/inventory/Fine-Chemicals',
+      link: '/inventory/fine-chemicals',
       description: 'Access and monitor all fine chemicals used for experiments and research.',
       roles: ['admin', 'groupleader', 'scientist', 'labMgmt'],
     },
     {
       icon: 'fa fa-archive',
       title: 'Archive',
-      link: '/inventory/Archieves',
+      link: '/inventory/archives',
       description: 'Store and access past records in one place.',
+      roles: ['admin', 'groupleader', 'scientist', 'labMgmt'],
+    },
+    {
+      icon: 'fa fa-exchange',
+      title: 'Borrowed',
+      link: '/inventory/borrowed',
+      description: 'Track all borrowed items and monitor their return status.',
       roles: ['admin', 'groupleader', 'scientist', 'labMgmt'],
     },
   ];

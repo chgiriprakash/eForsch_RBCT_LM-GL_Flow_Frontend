@@ -1,4 +1,16 @@
 const registrationFormConfig = [
+     {
+        id: "email",
+        label: "Email",
+        type: "email",
+        validation: { required: true, pattern: /^[^@\s]+@[^@\s]+\.[^@\s]+$/ },
+    },
+     {
+        id: "verifyEmail",
+        label: "Verify Email",
+        type: "button",
+        // validation: { required: true, pattern: /^[^@\s]+@[^@\s]+\.[^@\s]+$/ },
+    },
     {
         id: "fname",
         label: "First Name",
@@ -24,12 +36,6 @@ const registrationFormConfig = [
         type: "select",
         options: ["EForsch Group-A", "EForsch Group-B", "EForsch Group-C"],
         validation: { required: true },
-    },
-    {
-        id: "email",
-        label: "Email",
-        type: "email",
-        validation: { required: true, pattern: /^[^@\s]+@[^@\s]+\.[^@\s]+$/ },
     },
     {
         id: "password",

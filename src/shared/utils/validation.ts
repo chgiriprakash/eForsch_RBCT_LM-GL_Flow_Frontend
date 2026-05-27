@@ -17,3 +17,5 @@ export const validateField = (name: string, value: string, validation: any): str
 
   return null;
 };
+
+export const baseUrl =  'http://localhost:8080/'

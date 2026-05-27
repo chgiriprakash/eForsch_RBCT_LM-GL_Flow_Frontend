@@ -216,11 +216,11 @@ const Orders = () => {
       const updatedColumns = enhanceColumns(normalizedData.columns || [], userRole);
 
       // ✅ Filter list by role
+      // Approval flow: Scientist → labMgmt (1st approver) → groupleader (2nd approver) → PO
       let filteredList = normalizedData.list || [];
-      // labMgmt: no frontend filter — backend already returns the right orders,
-      // and lab is the FIRST approver so they should see ALL orders sent by backend
+      // labMgmt is the FIRST approver — sees ALL pending orders (no frontend filter needed)
       if (userRole?.role?.toLowerCase() === "groupleader") {
-        // Group leader is the SECOND approver — only show lab-approved orders
+        // groupleader is the SECOND approver — only sees lab-approved orders
         filteredList = filteredList.filter((item: Order) => item.labApproved === true);
       }
 

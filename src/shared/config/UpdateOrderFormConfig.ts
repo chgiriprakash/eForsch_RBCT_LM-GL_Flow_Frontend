@@ -7,7 +7,7 @@ const UpdateOrderFormConfig = (budgetOptions: string[]) => [
   },
   {
     id: "catalogue", // backend spelling is catalogue
-    label: "Catalogue (Mandatory)",
+    label: "Catalogue/Article Number",
     type: "text",
     validation: { required: true },
   },

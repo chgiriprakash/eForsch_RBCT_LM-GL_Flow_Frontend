@@ -16,7 +16,7 @@ const addProductFormConfig = (
   },
   {
     id: "catalogue",
-    label: "catalogue (Mandatory)",
+    label: "Catalogue/Article Number",
     type: "text",
     validation: { required: true },
   },

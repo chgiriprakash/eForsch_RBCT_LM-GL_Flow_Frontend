@@ -58,7 +58,7 @@ interface ProductListResponse {
 // Default values
 const defaultPagination: Pagination = {
   currentPage: 1,
-  pageSize: 10,
+  pageSize: 50,
   totalPages: 1,
   totalRecords: 0,
 };
@@ -346,74 +346,58 @@ const GeneralInventory = () => {
   };
   
 // 🟢 Handle Form Submission
-const handleFormSubmit = async (formData: Record<string, any>) => {
-  console.log("Form Data Submitted:", formData);
-
+const handleFormSubmit = async (formValues: Record<string, any>) => {
   try {
-    if (!formData || Object.keys(formData).length === 0) {
-      console.warn("No data provided for submission.");
-      alert("Please fill in the required fields before submitting.");
+    if (!formValues || Object.keys(formValues).length === 0) {
+      alert("Please fill required fields");
       return;
     }
 
-    // ✅ Add user details from localStorage
-    if (userRole.role?.toLowerCase() === "labmgmt" || userRole.role?.toLowerCase() === "labmanager") {
-      formData.addedby = "Lab Manager";   // ✅ Always show as Lab Manager
-      formData.groupName = "Admin User";  // ✅ Force group as Admin User
-      formData.role = userRole.role;
+    // ✅ Add user info
+    if (
+      userRole.role?.toLowerCase() === "labmgmt" ||
+      userRole.role?.toLowerCase() === "labmanager"
+    ) {
+      formValues.addedby = "Lab Manager";
+      formValues.groupName = "Admin User";
+      formValues.role = userRole.role;
     } else {
-      formData.addedby = userRole.name;       // ✅ Logged-in user name
-      formData.groupName = userRole.groupName; // ✅ User’s group
-      formData.role = userRole.role;
+      formValues.addedby = userRole.name;
+      formValues.groupName = userRole.groupName;
+      formValues.role = userRole.role;
     }
 
-    // ✅ Extract file object (if present)
-    const fileObj = formData.attachment || null;
-    delete formData.attachment;
+    // ✅ Extract file
+    const file = formValues.attachment || null;
 
-    // ✅ Build FormData payload
+    // ✅ Remove from object
+    delete formValues.attachment;
+
+    // ✅ Build FormData
     const payload = new FormData();
-    payload.append("inventory", JSON.stringify(formData)); // stringify inventory object
-    if (fileObj) {
-      payload.append("file", fileObj, fileObj.name); // attach file if present
+
+    // VERY IMPORTANT ✅
+    payload.append("inventory", JSON.stringify(formValues));
+
+    if (file) {
+      payload.append("file", file); // name MUST match API
     }
 
-    console.log("Submitting Payload (FormData):", {
-      inventory: JSON.stringify(formData),
-      file: fileObj ? fileObj : "No file",
-    });
+    console.log("🚀 Final Payload:");
+    console.log("inventory:", JSON.stringify(formValues));
+    console.log("file:", file);
 
-    try {
-      const result = await dispatch(
-        addProduct(payload)
-      ).unwrap();
+    await dispatch(addProduct(payload)).unwrap();
 
-      console.log("✅ Product Added Successfully:", result);
-    } catch (error: unknown) {
-      console.error("❌ Error Adding Product:", error);
+    alert("✅ Product added successfully");
 
-      if (error instanceof Error) {
-        alert(`Failed to add product: ${error.message}`);
-      } else {
-        alert("Failed to add product. Please try again.");
-      }
-      return;
-    }
-
-    // ✅ Reset file & Close modal after success
-    setUploadedFile(null);
     setIsModalOpen(false);
+    setUploadedFile(null);
 
-    // ✅ Refresh Data After Submission
     fetchData();
-  } catch (error: unknown) {
-    console.error("Error processing submission:", error);
-
-    if (error instanceof Error) {
-      alert(`An unexpected error occurred: ${error.message}`);
-    } else {
-      alert("An unexpected error occurred. Please try again.");
-    }
+  } catch (error: any) {
+    console.error("❌ Add product failed:", error);
+    alert(error?.message || "Something went wrong");
   }
 };
 
