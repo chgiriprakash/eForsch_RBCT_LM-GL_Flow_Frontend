@@ -13,7 +13,8 @@ import {  addOrder,
   getBudgetList,
   getGroupNames,
   shareProduct,
-  getProfile, } from "../dashboardSlice";
+  getProfile,
+  getCompanies, } from "../dashboardSlice";
 import addOrderProdFormConfig from "../../../shared/config/addOrderProdFormConfig";
 import updateProductFormGenInvConfig from "../../../shared/config/updateProductFormGenInvConfig.";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
@@ -35,6 +36,8 @@ const ProductDetails = () => {
   console.log("ProductDetails - order:", order);
   const [budget, setBudget] = useState<string[]>([]);
   const [groupOptions, setGroupOptions] = useState<string[]>([]);
+  const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
+  const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   const [isShareModalOpen, setIsShareModalOpen] =
   useState(false);
 
@@ -197,10 +200,35 @@ const [shareInitialValues] =
   };
   
 
+  const fetchCompanies = async () => {
+    try {
+      const result = await dispatch(getCompanies()).unwrap();
+      setCompanies(result);
+      setCompanyOptions(
+        result.map((c: any) => ({ label: c.companyName, key: c.companyName }))
+      );
+    } catch (error) {
+      console.error("Failed to fetch companies:", error);
+    }
+  };
+
+  const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string, any>> | void => {
+    if (id === "companyname" || id === "companyName") {
+      const selected = companies.find((c) => c.companyName === value);
+      if (selected) {
+        return {
+          companyinternalno: selected.companyNo,
+          companyInternalNo: selected.companyNo,
+        };
+      }
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchBudget();
     fetchGroupNames();
+    fetchCompanies();
   }, [dispatch, id]);
 
   const handleOrder = () => setIsModalOpen(true);
@@ -619,7 +647,12 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Order">
-        <ReusableForm formConfig={addOrderProdFormConfig(budget || [])} initialValues={order || {}} onSubmit={handleOrderSubmit} />
+        <ReusableForm
+          formConfig={addOrderProdFormConfig(budget || [], companyOptions)}
+          initialValues={order || {}}
+          onSubmit={handleOrderSubmit}
+          onFieldChange={handleCompanyFieldChange}
+        />
       </Modal>
 
       <Modal
@@ -628,9 +661,10 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
         title="Update Product"
       >
         <ReusableForm
-          formConfig={updateProductFormGenInvConfig(budget || [])}
+          formConfig={updateProductFormGenInvConfig(budget || [], companyOptions)}
           initialValues={updateProduct || {}}
           onSubmit={handleProductSubmit}
+          onFieldChange={handleCompanyFieldChange}
         />
       </Modal>
 

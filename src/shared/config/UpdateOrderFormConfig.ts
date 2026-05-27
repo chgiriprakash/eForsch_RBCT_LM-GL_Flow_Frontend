@@ -1,4 +1,7 @@
-const UpdateOrderFormConfig = (budgetOptions: string[]) => [
+const UpdateOrderFormConfig = (
+  budgetOptions: string[],
+  companyOptions: { label: string; key: string }[] = [],
+) => [
   {
     id: "productName",
     label: "Product (Mandatory)",
@@ -14,7 +17,8 @@ const UpdateOrderFormConfig = (budgetOptions: string[]) => [
   {
     id: "companyName",
     label: "Company (Mandatory)",
-    type: "text",
+    type: "select",
+    options: companyOptions,
     validation: { required: true },
   },
   {
@@ -31,9 +35,9 @@ const UpdateOrderFormConfig = (budgetOptions: string[]) => [
   },
   {
     id: "companyinternalno",
-    label: "Company Internal No",
+    label: "Company Internal No (auto-filled)",
     type: "text",
-    validation: { required: true },
+    validation: { required: false },
   },
   {
     id: "sapmaterialno",

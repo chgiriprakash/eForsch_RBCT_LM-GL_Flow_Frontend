@@ -1,4 +1,7 @@
-const updateProductFormGenInvConfig = (budgetOptions: string[]) => [
+const updateProductFormGenInvConfig = (
+  budgetOptions: string[],
+  companyOptions: { label: string; key: string }[] = [],
+) => [
   // {
   //   id: "productId",
   //   label: "Product ID",
@@ -21,7 +24,8 @@ const updateProductFormGenInvConfig = (budgetOptions: string[]) => [
   {
     id: "companyname",
     label: "Company Name",
-    type: "text",
+    type: "select",
+    options: companyOptions,
     validation: { required: true },
   },
   {
@@ -50,9 +54,9 @@ const updateProductFormGenInvConfig = (budgetOptions: string[]) => [
   // },
   {
     id: "companyinternalno",
-    label: "Company Internal No",
+    label: "Company Internal No (auto-filled)",
     type: "text",
-    validation: { required: true },
+    validation: { required: false },
   },
   {
     id: "sapmaterialno",

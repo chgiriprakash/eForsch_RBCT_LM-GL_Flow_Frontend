@@ -13,6 +13,7 @@ import {
   editFineChemicals,
   shareProduct,
   getProfile,
+  getCompanies,
 } from "../dashboardSlice";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
@@ -33,6 +34,8 @@ const FineChemicalsDetails = () => {
   const [updateProd, setupdateProd] = useState<any>(null);
   const [order, setOrder] = useState<any>(null);
   const [budget, setBudget] = useState<string[]>([]);
+  const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
+  const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
 
   const [shareInitialValues] = useState<any>({
     slot1Start: "",
@@ -237,9 +240,34 @@ const FineChemicalsDetails = () => {
     }
   };
 
+  const fetchCompanies = async () => {
+    try {
+      const result = await dispatch(getCompanies()).unwrap();
+      setCompanies(result);
+      setCompanyOptions(
+        result.map((c: any) => ({ label: c.companyName, key: c.companyName }))
+      );
+    } catch (error) {
+      console.error("Failed to fetch companies:", error);
+    }
+  };
+
+  const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string, any>> | void => {
+    if (id === "companyname" || id === "companyName") {
+      const selected = companies.find((c) => c.companyName === value);
+      if (selected) {
+        return {
+          companyInternalNo: selected.companyNo,
+          companyinternalno: selected.companyNo,
+        };
+      }
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchBudget();
+    fetchCompanies();
   }, [dispatch, id]);
 
   const handleOrder = () => setIsModalOpen(true);
@@ -534,11 +562,21 @@ const FineChemicalsDetails = () => {
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Fine Chemical Product Order">
-        <ReusableForm formConfig={addOrderFineChemicalFormConfig(budget || [])} initialValues={order || {}} onSubmit={handleOrderSubmit} />
+        <ReusableForm
+          formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions)}
+          initialValues={order || {}}
+          onSubmit={handleOrderSubmit}
+          onFieldChange={handleCompanyFieldChange}
+        />
       </Modal>
 
       <Modal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} title="Update Fine Chemical Product">
-        <ReusableForm formConfig={updateProductFormConfig(budget || [])} initialValues={updateProd || {}} onSubmit={handleUpdateSubmit} />
+        <ReusableForm
+          formConfig={updateProductFormConfig(budget || [], companyOptions)}
+          initialValues={updateProd || {}}
+          onSubmit={handleUpdateSubmit}
+          onFieldChange={handleCompanyFieldChange}
+        />
       </Modal>
 
       <Modal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} title="Share Product">

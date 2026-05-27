@@ -895,11 +895,12 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
         <ReusableForm
           formConfig={
             isFineChemical(selectedOrder)
-              ? UpdateOrderFormConfigFine(budget || [])
-              : UpdateOrderFormConfig(budget || [])
+              ? UpdateOrderFormConfigFine(budget || [], companyOptions)
+              : UpdateOrderFormConfig(budget || [], companyOptions)
           }
           initialValues={selectedOrder || {}}
           onSubmit={handleOrderSubmit}
+          onFieldChange={handleCompanyFieldChange}
         />
       </Modal>
 
