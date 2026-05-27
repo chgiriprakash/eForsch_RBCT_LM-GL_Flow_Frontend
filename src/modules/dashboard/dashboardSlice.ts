@@ -733,6 +733,19 @@ export const getCompanies = createAsyncThunk<any>(
   }
 );
 
+// ✅ Fetch all storage locations
+export const getStorageLocations = createAsyncThunk<any>(
+  'storageLocations/getAllStorageLocations',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.get<any>('storageLocations/getAllStorageLocations');
+      return response.data; // array of { id, storageLocation }
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  }
+);
+
 // ✅ Fetch Budget names
 export const getBudgetList = createThunk("budget/getBudgetList", (user) =>
   axiosClient.post("api/budget/getBudgetList?page=1&limit=10&sortBy=createddate&order=desc", user).then((res) => res.data)

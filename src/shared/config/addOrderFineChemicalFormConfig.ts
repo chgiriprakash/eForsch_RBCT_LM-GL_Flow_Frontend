@@ -1,6 +1,7 @@
 const addOrderFineChemicalFormConfig = (
   budgetOptions: string[],
   companyOptions: { label: string; key: string }[] = [],
+  storageLocationOptions: string[] = [],
 ) => [
     {
         id: "productname",
@@ -177,7 +178,8 @@ const addOrderFineChemicalFormConfig = (
     {
         id: "storageLocation",
         label: "Storage Location",
-        type: "text",
+        type: "select",
+        options: storageLocationOptions,
         validation: { required: true },
     },
     {

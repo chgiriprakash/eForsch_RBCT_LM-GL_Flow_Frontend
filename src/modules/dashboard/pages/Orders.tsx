@@ -4,7 +4,7 @@ import DynamicTable from "../../../shared/components/DynamicTable";
 import Modal from "../../../shared/components/Modal";
 import useAppDispatch from "../../../shared/hooks/useAppDispatch";
 import { useAppSelector } from "../../../shared/hooks/customHooks";
-import { addOrder, approveAdmin, approvelabMgmt, deliveredPOD, downloadPDF, addFineChemicalOrder, editFineChemicalOrder, editOrder, fetchOrders, fetchOrdersOD, getBudgetList, getCompanies, getGroupNames, orderedPOD, rejectAdmin, rejectlabMgmt } from "../dashboardSlice";
+import { addOrder, approveAdmin, approvelabMgmt, deliveredPOD, downloadPDF, addFineChemicalOrder, editFineChemicalOrder, editOrder, fetchOrders, fetchOrdersOD, getBudgetList, getCompanies, getStorageLocations, getGroupNames, orderedPOD, rejectAdmin, rejectlabMgmt } from "../dashboardSlice";
 import ReusableForm from "../../../shared/components/ReusableForm";
 import addOrderFormConfig from "../../../shared/config/addOrderFormConfig";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
@@ -204,6 +204,7 @@ const Orders = () => {
   const [groupOptions, setGroupOptions] = useState<string[]>([]);
   const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
   const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
+  const [storageLocationOptions, setStorageLocationOptions] = useState<string[]>([]);
   console.log("groupOptions:", groupOptions);
   
   console.log("selectedOrder:", selectedOrder);
@@ -309,6 +310,16 @@ const fetchPodeptData = async () => {
     }
   };
 
+  // ✅ Fetch storage locations for dropdown
+  const fetchStorageLocations = async () => {
+    try {
+      const result = await dispatch(getStorageLocations()).unwrap();
+      setStorageLocationOptions(result.map((s: any) => s.storageLocation));
+    } catch (error) {
+      console.error("Failed to fetch storage locations:", error);
+    }
+  };
+
   // Fetch orders
   useEffect(() => {
     if(userRole.role === "podept" || userRole.role === 'purchase department') {
@@ -320,6 +331,7 @@ const fetchPodeptData = async () => {
     fetchBudget();
     fetchGroupNames();
     fetchCompanies();
+    fetchStorageLocations();
   }, [dispatch]);
 
 const normalizeKeysAndCleanData = (data: any) => { 
@@ -895,7 +907,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
         <ReusableForm
           formConfig={
             isFineChemical(selectedOrder)
-              ? UpdateOrderFormConfigFine(budget || [], companyOptions)
+              ? UpdateOrderFormConfigFine(budget || [], companyOptions, storageLocationOptions)
               : UpdateOrderFormConfig(budget || [], companyOptions)
           }
           initialValues={selectedOrder || {}}
@@ -916,7 +928,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
 
       <Modal isOpen={isModalFCOpen} onClose={() => setIsModalFCOpen(false)} title="Add Fine-Chemicals Order">
         <ReusableForm
-          formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions)}
+          formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions, storageLocationOptions)}
           initialValues={initialFineChemicalData || {}}
           onSubmit={handleAddFinechemicalt}
           onFieldChange={handleCompanyFieldChange}

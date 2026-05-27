@@ -14,6 +14,7 @@ import {
   shareProduct,
   getProfile,
   getCompanies,
+  getStorageLocations,
 } from "../dashboardSlice";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
@@ -36,6 +37,7 @@ const FineChemicalsDetails = () => {
   const [budget, setBudget] = useState<string[]>([]);
   const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
   const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
+  const [storageLocationOptions, setStorageLocationOptions] = useState<string[]>([]);
 
   const [shareInitialValues] = useState<any>({
     slot1Start: "",
@@ -264,10 +266,20 @@ const FineChemicalsDetails = () => {
     }
   };
 
+  const fetchStorageLocations = async () => {
+    try {
+      const result = await dispatch(getStorageLocations()).unwrap();
+      setStorageLocationOptions(result.map((s: any) => s.storageLocation));
+    } catch (error) {
+      console.error("Failed to fetch storage locations:", error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchBudget();
     fetchCompanies();
+    fetchStorageLocations();
   }, [dispatch, id]);
 
   const handleOrder = () => setIsModalOpen(true);
@@ -563,7 +575,7 @@ const FineChemicalsDetails = () => {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Fine Chemical Product Order">
         <ReusableForm
-          formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions)}
+          formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions, storageLocationOptions)}
           initialValues={order || {}}
           onSubmit={handleOrderSubmit}
           onFieldChange={handleCompanyFieldChange}
@@ -572,7 +584,7 @@ const FineChemicalsDetails = () => {
 
       <Modal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} title="Update Fine Chemical Product">
         <ReusableForm
-          formConfig={updateProductFormConfig(budget || [], companyOptions)}
+          formConfig={updateProductFormConfig(budget || [], companyOptions, storageLocationOptions)}
           initialValues={updateProd || {}}
           onSubmit={handleUpdateSubmit}
           onFieldChange={handleCompanyFieldChange}

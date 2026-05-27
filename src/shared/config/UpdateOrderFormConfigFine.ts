@@ -1,6 +1,7 @@
 const UpdateOrderFormConfigFine = (
   budgetOptions: string[],
   companyOptions: { label: string; key: string }[] = [],
+  storageLocationOptions: string[] = [],
 ) => [
   {
     id: "productName",
@@ -174,7 +175,8 @@ const UpdateOrderFormConfigFine = (
   {
     id: "storageLocation",
     label: "Storage Location",
-    type: "text",
+    type: "select",
+    options: storageLocationOptions,
     validation: { required: false },
   },
   {

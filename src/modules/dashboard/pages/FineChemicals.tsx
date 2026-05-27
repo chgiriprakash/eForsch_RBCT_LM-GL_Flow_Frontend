@@ -9,6 +9,7 @@ import {
   fetchFineChemicals,
   getBudgetList,
   getCompanies,
+  getStorageLocations,
   // uploadProduct,
   // deleteFineChemicals,
   deleteInventoryArchieves,
@@ -132,6 +133,7 @@ const FineChemicals = () => {
   const [budget, setBudget] = useState<any[]>([]);
   const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
   const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
+  const [storageLocationOptions, setStorageLocationOptions] = useState<string[]>([]);
   
   const fetchData = async () => {
     try {
@@ -263,10 +265,20 @@ const FineChemicals = () => {
     }
   };
 
+  const fetchStorageLocations = async () => {
+    try {
+      const result = await dispatch(getStorageLocations()).unwrap();
+      setStorageLocationOptions(result.map((s: any) => s.storageLocation));
+    } catch (error) {
+      console.error("Failed to fetch storage locations:", error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchBudget();
     fetchCompanies();
+    fetchStorageLocations();
     console.log("Product Data:", data);
   }, [dispatch]);
 
@@ -606,7 +618,7 @@ const downloadAttachment = async (row: any) => {
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Fine Chemical Product">
-        <ReusableForm formConfig={addFineChemicalsFormConfig(budget || [], companyOptions)} initialValues={initialProductData} onSubmit={handleFormSubmit} onFieldChange={handleCompanyFieldChange} />
+        <ReusableForm formConfig={addFineChemicalsFormConfig(budget || [], companyOptions, storageLocationOptions)} initialValues={initialProductData} onSubmit={handleFormSubmit} onFieldChange={handleCompanyFieldChange} />
       </Modal>
     </>
   );
