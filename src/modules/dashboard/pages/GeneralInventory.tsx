@@ -4,7 +4,7 @@ import Modal from "../../../shared/components/Modal";
 import { useEffect, useState } from "react";
 import addProductFormConfig from "../../../shared/config/addProductFormConfig";
 import { useAppSelector } from "../../../shared/hooks/customHooks";
-import { addProduct, deleteInventoryArchieves, downloadPDFInv, fetchProducts, getBudgetList, getGroupNames, uploadProduct } from "../dashboardSlice";
+import { addProduct, deleteInventoryArchieves, downloadPDFInv, fetchProducts, getBudgetList, getGroupNames, getCompanies, uploadProduct } from "../dashboardSlice";
 import { useAppDispatch } from "../../../shared/hooks/useAppDispatch";
 import FileUpload from "../compoenents/FileUpload";
 import { useNavigate } from "react-router-dom";
@@ -100,6 +100,8 @@ const GeneralInventory = () => {
   console.log("GeneralInventory - error state:", error);
   const [budget, setBudget] = useState<string[]>([]);
   const [groupOptions, setGroupOptions] = useState<string[]>([]);
+  const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
+  const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   console.log("GeneralInventory - groupOptions:", groupOptions);
 
   const fetchData = async () => {
@@ -258,10 +260,34 @@ const GeneralInventory = () => {
   };
   
 
+  // ✅ Fetch companies for dropdown
+  const fetchCompanies = async () => {
+    try {
+      const result = await dispatch(getCompanies()).unwrap();
+      setCompanies(result);
+      setCompanyOptions(
+        result.map((c: any) => ({ label: c.companyName, key: c.companyName }))
+      );
+    } catch (error) {
+      console.error("Failed to fetch companies:", error);
+    }
+  };
+
+  // ✅ Auto-fill company internal number when company is selected
+  const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string, any>> | void => {
+    if (id === "companyname") {
+      const selected = companies.find((c) => c.companyName === value);
+      if (selected) {
+        return { companyinternalno: selected.companyNo };
+      }
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchBudget();
     fetchGroupNames();
+    fetchCompanies();
     console.log("Product Data:", data);
   }, [dispatch]);
 
@@ -573,7 +599,7 @@ const downloadAttachment = async (row: any) => {
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Product">
-        <ReusableForm formConfig={addProductFormConfig(budget || [])} initialValues={initialProductData} onSubmit={handleFormSubmit} />
+        <ReusableForm formConfig={addProductFormConfig(budget || [], companyOptions)} initialValues={initialProductData} onSubmit={handleFormSubmit} onFieldChange={handleCompanyFieldChange} />
       </Modal>
     </>
   );

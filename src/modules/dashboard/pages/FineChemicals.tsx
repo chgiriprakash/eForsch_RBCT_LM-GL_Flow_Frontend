@@ -3,16 +3,17 @@ import Button from "react-bootstrap/Button";
 import Modal from "../../../shared/components/Modal";
 import { useEffect, useState } from "react";
 import { useAppSelector } from "../../../shared/hooks/customHooks";
-import { 
-  // addProduct, 
-  // deleteProduct, 
-  fetchFineChemicals, 
-  getBudgetList, 
-  // uploadProduct, 
-  // deleteFineChemicals, 
-  deleteInventoryArchieves, 
-  // downloadPDFInv, 
-  downloadPDFFineChecm, 
+import {
+  // addProduct,
+  // deleteProduct,
+  fetchFineChemicals,
+  getBudgetList,
+  getCompanies,
+  // uploadProduct,
+  // deleteFineChemicals,
+  deleteInventoryArchieves,
+  // downloadPDFInv,
+  downloadPDFFineChecm,
   downloadPDF,
   uploadFineChemical} from "../dashboardSlice";
 import { addFineChemicals } from "../dashboardSlice";
@@ -129,6 +130,8 @@ const FineChemicals = () => {
   const { loading, error } = useAppSelector((state) => state.dashboard);
   console.log("FineChemicals - error from state:", error);
   const [budget, setBudget] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
+  const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   
   const fetchData = async () => {
     try {
@@ -237,9 +240,33 @@ const FineChemicals = () => {
       }
     };
 
+  // ✅ Fetch companies for dropdown
+  const fetchCompanies = async () => {
+    try {
+      const result = await dispatch(getCompanies()).unwrap();
+      setCompanies(result);
+      setCompanyOptions(
+        result.map((c: any) => ({ label: c.companyName, key: c.companyName }))
+      );
+    } catch (error) {
+      console.error("Failed to fetch companies:", error);
+    }
+  };
+
+  // ✅ Auto-fill company internal number when company is selected
+  const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string, any>> | void => {
+    if (id === "companyname") {
+      const selected = companies.find((c) => c.companyName === value);
+      if (selected) {
+        return { companyInternalNo: selected.companyNo };
+      }
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchBudget();
+    fetchCompanies();
     console.log("Product Data:", data);
   }, [dispatch]);
 
@@ -579,7 +606,7 @@ const downloadAttachment = async (row: any) => {
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Fine Chemical Product">
-        <ReusableForm formConfig={addFineChemicalsFormConfig((budget || []))} initialValues={initialProductData} onSubmit={handleFormSubmit} />
+        <ReusableForm formConfig={addFineChemicalsFormConfig(budget || [], companyOptions)} initialValues={initialProductData} onSubmit={handleFormSubmit} onFieldChange={handleCompanyFieldChange} />
       </Modal>
     </>
   );

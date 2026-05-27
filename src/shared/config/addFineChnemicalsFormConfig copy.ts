@@ -1,4 +1,7 @@
-const addFineChemicalsFormConfig = (budgetOptions: string[],) => [
+const addFineChemicalsFormConfig = (
+  budgetOptions: string[],
+  companyOptions: { label: string; key: string }[] = [],
+) => [
   {
     id: "productname",
     label: "Product",
@@ -14,7 +17,8 @@ const addFineChemicalsFormConfig = (budgetOptions: string[],) => [
   {
     id: "companyname",
     label: "Company",
-    type: "text",
+    type: "select",
+    options: companyOptions,
     validation: { required: true },
   },
   {
@@ -34,9 +38,9 @@ const addFineChemicalsFormConfig = (budgetOptions: string[],) => [
   },
   {
     id: "companyInternalNo",
-    label: "Company Internal No",
-    type: "text", // changed to text to accept alphanumeric
-    validation: { required: true },
+    label: "Company Internal No (auto-filled)",
+    type: "text",
+    validation: { required: false },
   },
   {
     id: "sapMaterialNo",
