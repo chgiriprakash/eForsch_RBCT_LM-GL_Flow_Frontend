@@ -5,7 +5,7 @@ import Home from './pages/Home';
 import Orders from './pages/Orders';
 import Protocol from './pages/Protocol';
 import Sharing from './pages/Sharing';
-import Groups from './pages/Groups';
+//import Groups from './pages/Groups';
 import ProductDetails from './pages/ProductDetails';
 import Users from './pages/Users';
 import ProtectedRoute from '../../routes/ProtectedRoute';
@@ -72,7 +72,7 @@ const DashRoutes = () => (
       <Route path="orders" element={<Orders />} />
       {/* <Route path="sharing" element={<Sharing />} /> */}
       {/* <Route path="sharing/:id" element={<Sharing />} /> */}
-      <Route path="groups" element={<Groups />} />
+      {/*<Route path="groups" element={<Groups />} />*/}
       <Route path="protocol" element={<Protocol />} />
       <Route path="budget" element={<Budget />} />
       <Route path="notifications" element={<Notifications />} />

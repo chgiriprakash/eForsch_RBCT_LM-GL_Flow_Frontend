@@ -30,7 +30,8 @@ interface ProductListResponse {
 }
 
 const Archieves = () => {
-  const userRole = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const groupName = user.groupName|| user.role;
   const [data, setData] = useState<ProductListResponse | null>(null);
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector((state) => state.dashboard);
@@ -41,19 +42,19 @@ const Archieves = () => {
 
   const fetchArchieves = async () => {
     try {
-      const result = await dispatch(getArchievesList(userRole)).unwrap();
+      const result = await dispatch(getArchievesList(groupName)).unwrap();
 
       // ✅ Correct API structure: result.data.list
       const normalizedData = normalizeKeysAndCleanData(result.data);
 
       const updatedColumns = enhanceColumns(
         normalizedData.columns || [],
-        userRole
+        groupName
       );
 
       const updatedList = enhanceList(
         normalizedData.list || [],
-        userRole
+        groupName
       );
 
       setData({

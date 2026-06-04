@@ -164,7 +164,7 @@ const DynamicTable = <T extends Record<string, any>>({
                       : ''
                   }
                 >
-                  {columns.filter((col) => !col.hidden).map((col) => {
+                  {columns.filter((col) => col.hidden!== true).map((col) => {
                     const value = row[col.key];
 
                     return (

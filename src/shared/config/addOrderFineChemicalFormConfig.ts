@@ -190,7 +190,7 @@ const addOrderFineChemicalFormConfig = (
     },
     {
         id: "attachment",
-        label: "Attachment",
+        label: "Please upload SDS in DE and/or EN",
         type: "file",
         validation: { required: false },
     },

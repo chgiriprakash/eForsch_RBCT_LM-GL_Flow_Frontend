@@ -29,7 +29,7 @@ interface Order {
   productname: string;
   catalogue: string;
   companyName: string;
-  sapmaterialno: string;
+ // sapmaterialno: string;
   quantity: number;
   budgetno: string;
   price: string;
@@ -94,7 +94,7 @@ const initialData: Order = {
   productname: "",
   catalogue: "", // fixed from catalogue
   companyName: "",
-  sapmaterialno: "",
+ // sapmaterialno: "",
   quantity: 0,
   budgetno: "",
   price: "",
@@ -147,7 +147,7 @@ const initialGeneralInventoryData = {
   companyname: "",
   quantity: "",
   companyinternalno: "",
-  sapmaterialno: "",
+ // sapmaterialno: "",
   weightvolsubqty: "",
   budgetno: "",
   orderdate: "", 
@@ -205,9 +205,9 @@ const Orders = () => {
   const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
   const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   const [storageLocationOptions, setStorageLocationOptions] = useState<string[]>([]);
-  console.log("groupOptions:", groupOptions);
+  //console.log("groupOptions:", groupOptions);
   
-  console.log("selectedOrder:", selectedOrder);
+  //console.log("selectedOrder:", selectedOrder);
   const fetchData = async () => {
   try {
     const result = await dispatch(fetchOrders(userRole)).unwrap();
@@ -343,13 +343,13 @@ const normalizeKeysAndCleanData = (data: any) => {
         catalogue: "catalogue", // Keep backend spelling (since form uses it)
         companyinternalno: "companyinternalno",
         companyInternalNo: "companyinternalno", // ✅ normalize
-        sapmaterialno: "sapmaterialno",
-        sapMaterialNo: "sapmaterialno", // ✅ normalize
+       // sapmaterialno: "sapmaterialno",
+        //sapMaterialNo: "sapmaterialno", // ✅ normalize
         remark: "remarks", // 
     };
 
     // Define keys to remove
-    const unwantedKeys = new Set(["adminName", "userName", "createdBy", "updatedBy", "expiryDate", "approvalStatusDate"]);
+    const unwantedKeys = new Set(["adminName", "userName", "createdBy", "updatedBy", "expiryDate", "approvalStatusDate", "inventoryType", "sapMaterialNo"]);
 
     // Create a mapping of lowercase column keys to their actual keys (after spelling corrections)
     const keyMapping: Record<string, string> = {};
@@ -394,12 +394,57 @@ const normalizeKeysAndCleanData = (data: any) => {
 const enhanceColumns = (columns: OrderColumn[], userRole: any) => {
   const role = userRole?.role?.toLowerCase();
 
+const hiddenColumns = [
+    "orderId",
+    "attachment",
+    "status", 
+    "expiryDate",           
+  "companyInternalNo",   // Company Internal No
+  "companyinternalno",   // in case backend sends lowercase
+  "concentration",       // Concentration
+  "adminApproved",       // GL Approved
+  "labApproved"  ,
+  "adminApprovalStatusDate", // GL Approval Date
+  "labApprovalStatusDate", // Lab Approval Date
+  "createdBy",
+  "updatedBy",
+  "createdAt",
+  "updatedAt",
+  "adminName",
+  "userName",
+  "groupName",
+  "productId",
+  "casnumber",
+  "hazardousSubstance",
+  "cmrSubstance",
+  "skinResorptive",
+  "ghsSymbols",
+  "ghsSignalWord",
+  "hPhrases",
+  "pPhrases",
+  "substitutionCheck",
+  "substitutionOption",
+  "storageLocation",
+  "casnumber",        // CAS Number
+  "casNumber",
+  "ghsCheckbox",      // GHS Checkbox
+
+  "orderdate",     // Order Date
+  "orderedby"  ,    // Ordered By
+   "inventoryType",  // Inventory Type
+  "request" ,
+  "fileName",
+   "orderDate",
+  "orderedBy"
+];
+
   let updatedColumns = columns.map((column) => ({
+ 
     ...column,
     isDate: ["orderdate", "approvalStatusDate", "createdat", "updatedat"].includes(
       column.key?.toLowerCase()
     ),
-    hidden: column.key.includes("orderId") ? true : false,
+    hidden: hiddenColumns.includes(column.key) ,
     onClick:
       column.key === "attachment"
         ? (row: Order) => addAttachment(row)
@@ -415,7 +460,7 @@ const enhanceColumns = (columns: OrderColumn[], userRole: any) => {
       label: "Inventory Type",
       sortable: false,
       isDate: false,
-      hidden: false,
+      hidden: true,
       onClick: undefined
     });
   }

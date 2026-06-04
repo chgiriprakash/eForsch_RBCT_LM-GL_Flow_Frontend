@@ -337,17 +337,23 @@ export const deleteUsers = createThunk("auth/deleteUser", (id: number) =>
 );
 
 // ✅ Fetch Archieves
-export const getArchievesList = createAsyncThunk<any, { user: any }>(
+export const getArchievesList = createAsyncThunk(
   'api/archive/archives',
-  async (user, { rejectWithValue }) => {
+  async (groupName: string, { rejectWithValue }) => {
     try {
-      const response = await axiosClient.post<any>('api/archive/archives', user);
+      const response = await axiosClient.get('api/archive/archives', {
+        params: { groupName },
+      });
+
       return response.data;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'An unknown error occurred');
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'An unknown error occurred'
+      );
     }
   }
 );
+
 
 // ✅ Delete Archieves
 export const deleteInventoryArchieves = createThunk(
