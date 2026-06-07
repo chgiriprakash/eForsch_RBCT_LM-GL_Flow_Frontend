@@ -141,6 +141,7 @@ const updateProductFormConfig = (
     id: "ghsSymbols",
     label: "GHS Symbols",
     type: "checkbox-group",
+    colSize: "col-12",
     options: [
       "Explosive",
       "Flammable",
@@ -163,14 +164,14 @@ const updateProductFormConfig = (
   {
     id: "hPhrases",
     label: "H-Phrases",
-    type: "select",
+    type: "typeahead",
     options: hPhraseOptions,
     validation: { required: true },
   },
   {
     id: "pPhrases",
     label: "P-Phrases",
-    type: "select",
+    type: "typeahead",
     options: pPhraseOptions,
     validation: { required: true },
   },

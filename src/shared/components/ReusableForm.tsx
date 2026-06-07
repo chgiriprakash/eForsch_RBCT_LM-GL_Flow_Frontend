@@ -26,6 +26,7 @@ type FormField = {
   };
 
   breakAfter?: boolean;
+  colSize?: string;
 };
 
 type FormProps = {
@@ -117,7 +118,7 @@ const ReusableForm: React.FC<FormProps> = ({
   };
 
   return (
-    <form className="row gy-2 align-items-center" onSubmit={handleSubmit}>
+    <form className="rf-form row gy-3 align-items-start" onSubmit={handleSubmit}>
       {formConfig.map((field) => {
         const shouldShow =
           !field.showIf ||
@@ -240,6 +241,7 @@ const ReusableForm: React.FC<FormProps> = ({
                   onChange={handleChange}
                   isLoggedIn={true}
                   totalFields={formConfig.length}
+                  colSize={field.colSize}
                   disabled={disabled}
                 />
             )}
@@ -253,21 +255,21 @@ const ReusableForm: React.FC<FormProps> = ({
       })}
 
       {/* ✅ FIXED BUTTON AREA */}
-      <div className="col-12 btnWrapper">
+      <div className="col-12 rf-btn-area">
         <button
           type="submit"
-          className="btn btn-color"
+          className="rf-btn-submit"
           disabled={disabled}
         >
-          Submit
+          <i className="fa fa-check me-2" />Submit
         </button>
 
         <button
           type="button"
-          className="btn btn-secondary"
+          className="rf-btn-reset"
           onClick={() => setFormData(initialValues)}
         >
-          Reset
+          <i className="fa fa-refresh me-2" />Reset
         </button>
       </div>
     </form>

@@ -17,7 +17,7 @@ const DashboardPage = () => {
         )}
       
       <div className="side-box flex-grow-1">
-        <div className="container">
+        <div className="content-area">
           <NavBar />
           <Outlet /> {/* Render nested routes here */}
         </div>
