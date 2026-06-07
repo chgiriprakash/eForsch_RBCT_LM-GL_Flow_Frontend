@@ -453,12 +453,6 @@ const enhanceList = (list: Order[], userRole: any) => {
           >
             Ordered
           </button>
-          <button
-            className="btn-color upload-wrapper btn btn-danger"
-            onClick={() => handleOrder(item, "Delivered")}
-          >
-            Delivered
-          </button>
         </>
       );
     }
@@ -466,6 +460,12 @@ const enhanceList = (list: Order[], userRole: any) => {
     if (role === "labmgmt") {
       requestButtons = (
         <>
+          <button
+            className="btn-color upload-wrapper btn btn-danger"
+            onClick={() => handleOrder(item, "Delivered")}
+          >
+            Delivered
+          </button>
           <button
             className="btn-color upload-wrapper btn btn-primary"
             onClick={() => handleApproval(item, true)}

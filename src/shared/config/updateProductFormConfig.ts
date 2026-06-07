@@ -2,6 +2,8 @@ const updateProductFormConfig = (
   budgetOptions: string[],
   companyOptions: { label: string; key: string }[] = [],
   storageLocationOptions: string[] = [],
+  hPhraseOptions: { label: string; key: string }[] = [],
+  pPhraseOptions: { label: string; key: string }[] = [],
 ) => [
 //   {
 //     id: "productId",
@@ -160,14 +162,16 @@ const updateProductFormConfig = (
   },
   {
     id: "hPhrases",
-    label: "H-Phrases (e.g. +H332)",
-    type: "text",
+    label: "H-Phrases",
+    type: "select",
+    options: hPhraseOptions,
     validation: { required: true },
   },
   {
     id: "pPhrases",
-    label: "P-Phrases (e.g. +P332)",
-    type: "text",
+    label: "P-Phrases",
+    type: "select",
+    options: pPhraseOptions,
     validation: { required: true },
   },
   {

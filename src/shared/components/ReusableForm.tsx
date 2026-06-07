@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import InputField from "./InputField";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
+// Lazy load ReactQuill to avoid bundling issues
+const ReactQuill = lazy(() => import("react-quill").then(m => ({ default: m.default })));
+import "quill/dist/quill.snow.css";
 
 type FormField = {
   options?: any[];
@@ -206,14 +207,16 @@ const ReusableForm: React.FC<FormProps> = ({
                 <label className="col-form-label label">
                   {field.label}
                 </label>
-                <ReactQuill
-                  theme="snow"
-                  value={formData[field.id] || ""}
-                  onChange={(value) =>
-                    handleChange(field.id, value)
-                  }
-                  readOnly={disabled}
-                />
+                <Suspense fallback={<div>Loading editor...</div>}>
+                  <ReactQuill
+                    theme="snow"
+                    value={formData[field.id] || ""}
+                    onChange={(value: string) =>
+                      handleChange(field.id, value)
+                    }
+                    readOnly={disabled}
+                  />
+                </Suspense>
                 {errors[field.id] && (
                   <div className="text-danger">
                     {errors[field.id]}

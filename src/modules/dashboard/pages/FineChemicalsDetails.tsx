@@ -15,6 +15,9 @@ import {
   getProfile,
   getCompanies,
   getStorageLocations,
+  getHPhrases,
+  getPPhrases,
+  downloadPDFFineChecm,
 } from "../dashboardSlice";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
@@ -38,6 +41,10 @@ const FineChemicalsDetails = () => {
   const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
   const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   const [storageLocationOptions, setStorageLocationOptions] = useState<string[]>([]);
+  const [hPhraseMap, setHPhraseMap] = useState<Record<string, string>>({});
+  const [pPhraseMap, setPPhraseMap] = useState<Record<string, string>>({});
+  const [hPhraseOptions, setHPhraseOptions] = useState<Array<{ label: string; key: string }>>([]);
+  const [pPhraseOptions, setPPhraseOptions] = useState<Array<{ label: string; key: string }>>([]);
 
   const [shareInitialValues] = useState<any>({
     slot1Start: "",
@@ -275,11 +282,33 @@ const FineChemicalsDetails = () => {
     }
   };
 
+  const fetchHPhrases = async () => {
+    try {
+      const result = await dispatch(getHPhrases()).unwrap();
+      const map: Record<string, string> = {};
+      result.forEach((h: any) => { map[h.phraseCode] = h.phraseDescription; });
+      setHPhraseMap(map);
+      setHPhraseOptions(result.map((h: any) => ({ label: `${h.phraseCode} - ${h.phraseDescription}`, key: h.phraseCode })));
+    } catch (e) { console.error("Failed to fetch H-Phrases:", e); }
+  };
+
+  const fetchPPhrases = async () => {
+    try {
+      const result = await dispatch(getPPhrases()).unwrap();
+      const map: Record<string, string> = {};
+      result.forEach((p: any) => { map[p.phraseCode] = p.phraseDescription; });
+      setPPhraseMap(map);
+      setPPhraseOptions(result.map((p: any) => ({ label: `${p.phraseCode} - ${p.phraseDescription}`, key: p.phraseCode })));
+    } catch (e) { console.error("Failed to fetch P-Phrases:", e); }
+  };
+
   useEffect(() => {
     fetchData();
     fetchBudget();
     fetchCompanies();
     fetchStorageLocations();
+    fetchHPhrases();
+    fetchPPhrases();
   }, [dispatch, id]);
 
   const handleOrder = () => setIsModalOpen(true);
@@ -488,15 +517,74 @@ const FineChemicalsDetails = () => {
   );
 
   const handleUpdateSubmit = async (formData: any) => {
-    const payload = mapToModifyApiPayload(formData);
     try {
-      const updated = await dispatch(editFineChemicals(payload)).unwrap();
+      // ReusableForm stores files as File[] array — extract first file
+      const attachmentFile: File | null =
+        formData.attachment instanceof File ? formData.attachment :
+        Array.isArray(formData.attachment) && formData.attachment.length > 0 ? formData.attachment[0] :
+        null;
+
+      // Build clean JSON payload
+      const rawPayload = mapToModifyApiPayload(formData);
+      const cleanPayload: any = {
+        ...rawPayload,
+        // Convert "Yes"/"No" strings → true/false for backend Boolean fields
+        hazardousSubstance: rawPayload.hazardousSubstance === "Yes" ? true : rawPayload.hazardousSubstance === "No" ? false : rawPayload.hazardousSubstance,
+        cmrSubstance:       rawPayload.cmrSubstance       === "Yes" ? true : rawPayload.cmrSubstance       === "No" ? false : rawPayload.cmrSubstance,
+        skinResorptive:     rawPayload.skinResorptive     === "Yes" ? true : rawPayload.skinResorptive     === "No" ? false : rawPayload.skinResorptive,
+        fileContent: null,  // will be set below if file exists
+      };
+
+      // If file selected — convert to Base64 and include in JSON payload
+      if (attachmentFile) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = () => resolve((reader.result as string).split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(attachmentFile);
+        });
+        cleanPayload.fileName    = attachmentFile.name;
+        cleanPayload.fileType    = attachmentFile.type;
+        cleanPayload.fileContent = base64;   // backend setFileContent(Object) decodes Base64 → byte[]
+      }
+
+      const updated = await dispatch(editFineChemicals(cleanPayload)).unwrap();
       setProduct(normalizeKeysToFormIds(updated.data));
       fetchData();
       setIsProductModalOpen(false);
       alert("Product updated successfully!");
     } catch (error) {
+      console.error("Update failed:", error);
       alert("Failed to update product.");
+    }
+  };
+
+  const handleDownloadAttachment = async () => {
+    if (!id) { console.error("No product ID"); return; }
+    console.log("Downloading attachment for product id:", id);
+    console.log("Product filename:", product?.filename || product?.fileName);
+    try {
+      const fileUrl = await dispatch(downloadPDFFineChecm(Number(id))).unwrap();
+      console.log("File URL received:", fileUrl);
+      if (fileUrl) {
+        const fileName = product?.filename || product?.fileName || "attachment";
+        const link = document.createElement("a");
+        link.href = fileUrl;
+        link.setAttribute("download", fileName);
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(fileUrl);
+        }, 100);
+      } else {
+        alert("No attachment found for this product.");
+      }
+    } catch (error: any) {
+      console.error("Download failed:", error);
+      console.error("Error details:", error?.message, error?.response?.status, error?.response?.data);
+      alert(`Download failed: ${error?.message || "Unknown error"}`);
     }
   };
 
@@ -559,12 +647,62 @@ const FineChemicalsDetails = () => {
                   <td>Signal Words</td>
                   <td>{Array.isArray(product.ghsSignalWord) ? product.ghsSignalWord.join(", ") : getValue(product.ghsSignalWord)}</td>
                 </tr>
-                <tr><td>H Phrases</td><td>{getValue(product.hPhrases)}</td></tr>
-                <tr><td>P Phrases</td><td>{getValue(product.pPhrases)}</td></tr>
+                <tr>
+                  <td>H-Phrases</td>
+                  <td>
+                    {product.hPhrases ? (
+                      <span>
+                        <strong>{product.hPhrases}</strong>
+                        {hPhraseMap[product.hPhrases] && (
+                          <span style={{ color: "#555", marginLeft: "8px" }}>
+                            — {hPhraseMap[product.hPhrases]}
+                          </span>
+                        )}
+                      </span>
+                    ) : "-"}
+                  </td>
+                </tr>
+                <tr>
+                  <td>P-Phrases</td>
+                  <td>
+                    {product.pPhrases ? (
+                      <span>
+                        <strong>{product.pPhrases}</strong>
+                        {pPhraseMap[product.pPhrases] && (
+                          <span style={{ color: "#555", marginLeft: "8px" }}>
+                            — {pPhraseMap[product.pPhrases]}
+                          </span>
+                        )}
+                      </span>
+                    ) : "-"}
+                  </td>
+                </tr>
                 <tr><td>Substitution Check</td><td>{getValue(product.substitutionCheck)}</td></tr>
                 <tr><td>Substitution Option</td><td>{getValue(product.substitutionOption)}</td></tr>
                 <tr><td>Storage Location</td><td>{getValue(product.storageLocation)}</td></tr>
                 <tr><td>Ordered By</td><td>{getValue(product.orderedby)}</td></tr>
+                <tr>
+                  <td>Attachment</td>
+                  <td>
+                    {product.filename || product.fileName ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <i className="fa fa-paperclip" style={{ color: "#005ca7" }} />
+                        <span style={{ fontSize: "13px", color: "#333" }}>
+                          {product.filename || product.fileName}
+                        </span>
+                        <button
+                          className="btn btn-color btn-sm"
+                          onClick={handleDownloadAttachment}
+                          title="Download attachment"
+                        >
+                          <i className="fa fa-download me-1" /> Download
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ color: "#aaa", fontSize: "13px" }}>No attachment</span>
+                    )}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -584,7 +722,7 @@ const FineChemicalsDetails = () => {
 
       <Modal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} title="Update Fine Chemical Product">
         <ReusableForm
-          formConfig={updateProductFormConfig(budget || [], companyOptions, storageLocationOptions)}
+          formConfig={updateProductFormConfig(budget || [], companyOptions, storageLocationOptions, hPhraseOptions, pPhraseOptions)}
           initialValues={updateProd || {}}
           onSubmit={handleUpdateSubmit}
           onFieldChange={handleCompanyFieldChange}

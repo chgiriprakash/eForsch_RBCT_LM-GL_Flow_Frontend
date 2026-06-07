@@ -14,7 +14,8 @@ import {  addOrder,
   getGroupNames,
   shareProduct,
   getProfile,
-  getCompanies, } from "../dashboardSlice";
+  getCompanies,
+  downloadPDFInv, } from "../dashboardSlice";
 import addOrderProdFormConfig from "../../../shared/config/addOrderProdFormConfig";
 import updateProductFormGenInvConfig from "../../../shared/config/updateProductFormGenInvConfig.";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
@@ -547,6 +548,28 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
     return result;
   };
 
+  const handleDownloadAttachment = async () => {
+    if (!product?.productId && !id) return;
+    try {
+      const productId = product?.productId || product?.productid || Number(id);
+      const fileUrl = await dispatch(downloadPDFInv(productId)).unwrap();
+      if (fileUrl) {
+        const link = document.createElement("a");
+        link.href = fileUrl;
+        link.download = product?.fileName || product?.filename || "attachment";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(fileUrl);
+      } else {
+        alert("No attachment found for this product.");
+      }
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Failed to download attachment.");
+    }
+  };
+
   const getValue = (value: any) => {
     if (value === null || value === undefined || value === "") {
       return "-";
@@ -636,6 +659,28 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
                 <tr>
                   <td>Shared</td>
                   <td>{product.shared ? "Yes" : "No"}</td>
+                </tr>
+                <tr>
+                  <td>Attachment</td>
+                  <td>
+                    {product.filename || product.fileName ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <i className="fa fa-paperclip" style={{ color: "#005ca7" }} />
+                        <span style={{ fontSize: "13px", color: "#333" }}>
+                          {product.filename || product.fileName}
+                        </span>
+                        <button
+                          className="btn btn-color btn-sm"
+                          onClick={handleDownloadAttachment}
+                          title="Download attachment"
+                        >
+                          <i className="fa fa-download me-1" /> Download
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ color: "#aaa", fontSize: "13px" }}>No attachment</span>
+                    )}
+                  </td>
                 </tr>
               </tbody>
             </table>

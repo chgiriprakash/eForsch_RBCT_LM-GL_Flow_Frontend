@@ -32,6 +32,7 @@ import ProfilePage from './pages/ProfilePage';
 import GroupSharing from './pages/GroupSharing';
 import LabSharing from './pages/LabSharing';
 import AllRequest from './pages/AllRequest';
+import Administration from './pages/Administration';
 
 
 const DashRoutes = () => (
@@ -102,6 +103,16 @@ const DashRoutes = () => (
         <Route path="my-projects" element={<CreateProject />} />
         <Route path="projects-archives" element={<ProjectArchives />} />
       </Route>
+
+      {/* Administration (Admin only) */}
+      <Route
+        path="administration"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <Administration />
+          </ProtectedRoute>
+        }
+      />
     </Route>
   </Routes>
 );
