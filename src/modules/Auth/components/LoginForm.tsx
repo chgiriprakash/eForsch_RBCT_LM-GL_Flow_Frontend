@@ -59,8 +59,14 @@ const handleSubmit = async (e: React.FormEvent) => {
     const result = await dispatch(loginUser(credentials)).unwrap();
 
     console.log("LOGIN RESPONSE:", result);
+    console.log("Login result structure:", { result, resultData: result?.data });
 
-    const user = result?.data?.user;
+    // Extract user from response - handle both possible response structures
+    const user = result?.data?.user || result?.user;
+
+    if (!user) {
+      throw new Error("Invalid response structure: user data not found");
+    }
 
     try {
       const existingProfile = await dispatch(
@@ -121,15 +127,23 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     navigate("/dashboard");
 
-  } catch (error) {
-
+  } catch (error: any) {
+    console.log("=== CATCH BLOCK EXECUTED ===");
     console.error("Login failed:", error);
+    console.error("Error type:", typeof error);
 
-    setToastMessage(
-      "Login failed. Please check your credentials."
-    );
+    // Handle both string errors (from rejectWithValue) and error objects
+    const errorMessage = typeof error === 'string' 
+                        ? error 
+                        : (error?.response?.data?.message || 
+                           error?.message || 
+                           "Invalid username and password");
 
+    setToastMessage(errorMessage);
     setToastType("error");
+    
+    // Show alert as fallback for error message
+    alert(errorMessage);
   }
 };
 

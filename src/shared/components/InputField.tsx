@@ -1,4 +1,4 @@
-import React, { ChangeEvent } from "react";
+import React, { ChangeEvent, useState, useRef, useEffect } from "react";
 
 interface ValidationRules {
   required?: boolean;
@@ -33,6 +33,115 @@ const ghsImageMap: Record<string, string> = {
   Harmful: "/src/assets/ghs/ghs_007.jpg",
   "Gas under pressure": "/src/assets/ghs/ghs_008.jpg",
   "Environmental hazard": "/src/assets/ghs/ghs_009.jpg",
+};
+
+const TypeaheadField: React.FC<{
+  id: string;
+  value: string;
+  options: OptionType[];
+  onChange: (val: string) => void;
+  disabled?: boolean;
+  error?: string;
+}> = ({ id, value, options, onChange, disabled, error }) => {
+  const [query, setQuery] = useState(value);
+  const [locked, setLocked] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  useEffect(() => { setQuery(value); }, [value]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const getLabel = (opt: OptionType) => typeof opt === "string" ? opt : opt.label;
+  const getKey   = (opt: OptionType) => typeof opt === "string" ? opt : opt.key;
+
+  const filtered = options.filter(Boolean).filter((opt) =>
+    getLabel(opt).toLowerCase().includes(query.toLowerCase())
+  );
+
+  const handleClear = () => {
+    setQuery("");
+    setLocked(false);
+    setOpen(false);
+    setActiveIndex(-1);
+    onChange("");
+  };
+
+  const selectOption = (opt: OptionType) => {
+    onChange(getKey(opt));
+    setQuery(getLabel(opt));
+    setLocked(true);
+    setOpen(false);
+    setActiveIndex(-1);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open || filtered.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = (activeIndex + 1) % filtered.length;
+      setActiveIndex(next);
+      listRef.current?.children[next]?.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prev = (activeIndex - 1 + filtered.length) % filtered.length;
+      setActiveIndex(prev);
+      listRef.current?.children[prev]?.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      selectOption(filtered[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  return (
+    <div ref={containerRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: 6 }}>
+      <input
+        id={id}
+        type="text"
+        value={query}
+        disabled={disabled}
+        readOnly={locked}
+        autoComplete="off"
+        placeholder="Type to search..."
+        className={`input ${error ? "errorInput" : ""} ${locked ? "typeahead-locked" : ""}`}
+        style={{ flex: 1 }}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); setActiveIndex(-1); onChange(e.target.value); }}
+        onFocus={() => { if (!locked) setOpen(true); }}
+        onKeyDown={handleKeyDown}
+      />
+      {locked && !disabled && (
+        <button type="button" className="typeahead-clear" onClick={handleClear} title="Clear selection">
+          ×
+        </button>
+      )}
+      {open && !locked && filtered.length > 0 && (
+        <ul className="typeahead-dropdown" ref={listRef}>
+          {filtered.map((opt, idx) => (
+            <li
+              key={getKey(opt)}
+              className={`typeahead-option ${idx === activeIndex ? "typeahead-option-active" : ""}`}
+              onMouseDown={() => selectOption(opt)}
+            >
+              {getLabel(opt)}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 };
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -97,8 +206,8 @@ const InputField: React.FC<InputFieldProps> = ({
   };
 
   return (
-    <div className={columnClass}>
-      <label htmlFor={id} className="col-form-label label">
+    <div className={`${columnClass} rf-field`}>
+      <label htmlFor={id} className="rf-label">
         {label}
       </label>
 
@@ -177,6 +286,25 @@ const InputField: React.FC<InputFieldProps> = ({
             );
           })}
         </div>
+      ) : type === "textarea" ? (
+        <textarea
+          id={id}
+          value={value || ""}
+          rows={3}
+          disabled={disabled}
+          className={`input ${error ? "errorInput" : ""}`}
+          style={{ resize: "vertical" }}
+          onChange={(e) => onChange(id, e.target.value)}
+        />
+      ) : type === "typeahead" ? (
+        <TypeaheadField
+          id={id}
+          value={value || ""}
+          options={options || []}
+          onChange={(val) => onChange(id, val)}
+          disabled={disabled}
+          error={error}
+        />
       ) : (
         <input
           id={id}

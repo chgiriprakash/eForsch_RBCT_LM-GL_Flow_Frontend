@@ -61,6 +61,13 @@ const navigationConfig = [
         description: 'The treasure chest of “how-to” guides for your experiments. Science ninjas, unite!',
         roles:  ['admin', 'groupleader', 'scientist', 'labMgmt'], // ['admin'] Only visible to Admins
     },
+    {
+        icon: 'fa fa-sliders',
+        title: 'Administration',
+        link: '/administration',
+        description: 'Manage lookup tables: H-Phrases, P-Phrases, Companies, Storage Locations.',
+        roles: ['admin', 'labMgmt'],
+    },
 ];
 
 export default navigationConfig;

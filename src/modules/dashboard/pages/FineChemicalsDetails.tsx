@@ -15,6 +15,9 @@ import {
   getProfile,
   getCompanies,
   getStorageLocations,
+  getHPhrases,
+  getPPhrases,
+  downloadPDFFineChecm,
 } from "../dashboardSlice";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
@@ -38,6 +41,10 @@ const FineChemicalsDetails = () => {
   const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
   const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   const [storageLocationOptions, setStorageLocationOptions] = useState<string[]>([]);
+  const [hPhraseMap, setHPhraseMap] = useState<Record<string, string>>({});
+  const [pPhraseMap, setPPhraseMap] = useState<Record<string, string>>({});
+  const [hPhraseOptions, setHPhraseOptions] = useState<Array<{ label: string; key: string }>>([]);
+  const [pPhraseOptions, setPPhraseOptions] = useState<Array<{ label: string; key: string }>>([]);
 
   const [shareInitialValues] = useState<any>({
     slot1Start: "",
@@ -275,11 +282,33 @@ const FineChemicalsDetails = () => {
     }
   };
 
+  const fetchHPhrases = async () => {
+    try {
+      const result = await dispatch(getHPhrases()).unwrap();
+      const map: Record<string, string> = {};
+      result.forEach((h: any) => { map[h.phraseCode] = h.phraseDescription; });
+      setHPhraseMap(map);
+      setHPhraseOptions(result.map((h: any) => ({ label: `${h.phraseCode} - ${h.phraseDescription}`, key: h.phraseCode })));
+    } catch (e) { console.error("Failed to fetch H-Phrases:", e); }
+  };
+
+  const fetchPPhrases = async () => {
+    try {
+      const result = await dispatch(getPPhrases()).unwrap();
+      const map: Record<string, string> = {};
+      result.forEach((p: any) => { map[p.phraseCode] = p.phraseDescription; });
+      setPPhraseMap(map);
+      setPPhraseOptions(result.map((p: any) => ({ label: `${p.phraseCode} - ${p.phraseDescription}`, key: p.phraseCode })));
+    } catch (e) { console.error("Failed to fetch P-Phrases:", e); }
+  };
+
   useEffect(() => {
     fetchData();
     fetchBudget();
     fetchCompanies();
     fetchStorageLocations();
+    fetchHPhrases();
+    fetchPPhrases();
   }, [dispatch, id]);
 
   const handleOrder = () => setIsModalOpen(true);
@@ -488,15 +517,74 @@ const FineChemicalsDetails = () => {
   );
 
   const handleUpdateSubmit = async (formData: any) => {
-    const payload = mapToModifyApiPayload(formData);
     try {
-      const updated = await dispatch(editFineChemicals(payload)).unwrap();
+      // ReusableForm stores files as File[] array — extract first file
+      const attachmentFile: File | null =
+        formData.attachment instanceof File ? formData.attachment :
+        Array.isArray(formData.attachment) && formData.attachment.length > 0 ? formData.attachment[0] :
+        null;
+
+      // Build clean JSON payload
+      const rawPayload = mapToModifyApiPayload(formData);
+      const cleanPayload: any = {
+        ...rawPayload,
+        // Convert "Yes"/"No" strings → true/false for backend Boolean fields
+        hazardousSubstance: rawPayload.hazardousSubstance === "Yes" ? true : rawPayload.hazardousSubstance === "No" ? false : rawPayload.hazardousSubstance,
+        cmrSubstance:       rawPayload.cmrSubstance       === "Yes" ? true : rawPayload.cmrSubstance       === "No" ? false : rawPayload.cmrSubstance,
+        skinResorptive:     rawPayload.skinResorptive     === "Yes" ? true : rawPayload.skinResorptive     === "No" ? false : rawPayload.skinResorptive,
+        fileContent: null,  // will be set below if file exists
+      };
+
+      // If file selected — convert to Base64 and include in JSON payload
+      if (attachmentFile) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = () => resolve((reader.result as string).split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(attachmentFile);
+        });
+        cleanPayload.fileName    = attachmentFile.name;
+        cleanPayload.fileType    = attachmentFile.type;
+        cleanPayload.fileContent = base64;   // backend setFileContent(Object) decodes Base64 → byte[]
+      }
+
+      const updated = await dispatch(editFineChemicals(cleanPayload)).unwrap();
       setProduct(normalizeKeysToFormIds(updated.data));
       fetchData();
       setIsProductModalOpen(false);
       alert("Product updated successfully!");
     } catch (error) {
+      console.error("Update failed:", error);
       alert("Failed to update product.");
+    }
+  };
+
+  const handleDownloadAttachment = async () => {
+    if (!id) { console.error("No product ID"); return; }
+    console.log("Downloading attachment for product id:", id);
+    console.log("Product filename:", product?.filename || product?.fileName);
+    try {
+      const fileUrl = await dispatch(downloadPDFFineChecm(Number(id))).unwrap();
+      console.log("File URL received:", fileUrl);
+      if (fileUrl) {
+        const fileName = product?.filename || product?.fileName || "attachment";
+        const link = document.createElement("a");
+        link.href = fileUrl;
+        link.setAttribute("download", fileName);
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(fileUrl);
+        }, 100);
+      } else {
+        alert("No attachment found for this product.");
+      }
+    } catch (error: any) {
+      console.error("Download failed:", error);
+      console.error("Error details:", error?.message, error?.response?.status, error?.response?.data);
+      alert(`Download failed: ${error?.message || "Unknown error"}`);
     }
   };
 
@@ -519,54 +607,242 @@ const FineChemicalsDetails = () => {
       {error && <div className="error-message">Error: {error}</div>}
       {!loading && product ? (
         <>
-          <div className="title-header">
-            <div className="btn-wrapper">
-              <Button className="btn-color" onClick={handleOrder}>Add Order</Button>
-              <Button className="btn-color" onClick={handleShare}>Share</Button>
-              <Button className="btn-color" onClick={handleUpdate}>Update Product</Button>
+          <div className="pd-page">
+            {/* Header */}
+            <div className="pd-header">
+              <div className="pd-title-block">
+                <span className="pd-breadcrumb">Fine Chemicals</span>
+                <h2 className="pd-product-name">{getValue(product.productname)}</h2>
+              </div>
+              <div className="pd-actions">
+                <Button className="pd-btn pd-btn-outline" onClick={handleShare}>
+                  <i className="fa fa-share-alt me-1" /> Share
+                </Button>
+                <Button className="pd-btn pd-btn-outline" onClick={handleUpdate}>
+                  <i className="fa fa-edit me-1" /> Update
+                </Button>
+                <Button className="pd-btn pd-btn-primary" onClick={handleOrder}>
+                  <i className="fa fa-plus me-1" /> Add Order
+                </Button>
+              </div>
             </div>
-          </div>
 
-          <div className="product-details">
-            <table className="product-details-table">
-              <thead><tr><th colSpan={2}>{getValue(product.productname)}</th></tr></thead>
-              <tbody>
-                <tr><td>Catalogue</td><td>{getValue(product.catalogue)}</td></tr>
-                <tr><td>Company</td><td>{getValue(product.companyname)}</td></tr>
-                <tr><td>Quantity</td><td>{getValue(product.quantity)}</td></tr>
-                <tr><td>Company Internal No</td><td>{getValue(product.companyInternalNo)}</td></tr>
-                <tr><td>SAP Material No</td><td>{getValue(product.sapMaterialNo)}</td></tr>
-                <tr><td>Weight/Vol Sub QTY</td><td>{getValue(product.wvsubqty)}</td></tr>
-                <tr><td>Budget No</td><td>{getValue(product.budgetno)}</td></tr>
-                <tr><td>Order Date</td><td>{formatDate(product.orderdate, "DD-MM-YYYY")}</td></tr>
-                <tr><td>Expiry Date</td><td>{formatDate(product.expiryDate, "DD-MM-YYYY")}</td></tr>
-                <tr><td>Concentration</td><td>{getValue(product.concentration)}</td></tr>
-                <tr><td>CAS Number</td><td>{getValue(product.casnumber)}</td></tr>
-                <tr><td>Hazardous Substance</td><td>{getValue(product.hazardousSubstance)}</td></tr>
-                <tr><td>CMR Substance</td><td>{getValue(product.cmrSubstance)}</td></tr>
-                <tr><td>Skin Resorptive</td><td>{getValue(product.skinResorptive)}</td></tr>
-                <tr>
-                  <td>GHS Symbols</td>
-                  <td>
-                    {Array.isArray(product.ghsSymbols) && product.ghsSymbols.length > 0
-                      ? product.ghsSymbols.map((symbol: any, idx: any) => (
-                          <img key={idx} src={ghsImageMap[symbol]} alt={symbol} style={{ width: 40, height: 40, marginRight: 6 }} />
-                        ))
-                      : "-"}
-                  </td>
-                </tr>
-                <tr>
-                  <td>Signal Words</td>
-                  <td>{Array.isArray(product.ghsSignalWord) ? product.ghsSignalWord.join(", ") : getValue(product.ghsSignalWord)}</td>
-                </tr>
-                <tr><td>H Phrases</td><td>{getValue(product.hPhrases)}</td></tr>
-                <tr><td>P Phrases</td><td>{getValue(product.pPhrases)}</td></tr>
-                <tr><td>Substitution Check</td><td>{getValue(product.substitutionCheck)}</td></tr>
-                <tr><td>Substitution Option</td><td>{getValue(product.substitutionOption)}</td></tr>
-                <tr><td>Storage Location</td><td>{getValue(product.storageLocation)}</td></tr>
-                <tr><td>Ordered By</td><td>{getValue(product.orderedby)}</td></tr>
-              </tbody>
-            </table>
+            <div className="pd-grid">
+
+              {/* Product Info */}
+              <div className="pd-card">
+                <div className="pd-card-header">
+                  <i className="fa fa-flask pd-card-icon" />
+                  <span>Product Info</span>
+                </div>
+                <div className="pd-fields">
+                  <div className="pd-field">
+                    <span className="pd-label">Catalogue</span>
+                    <span className="pd-value">{getValue(product.catalogue)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Company</span>
+                    <span className="pd-value">{getValue(product.companyname)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">CAS Number</span>
+                    <span className="pd-value">{getValue(product.casnumber)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Concentration</span>
+                    <span className="pd-value">{getValue(product.concentration)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* IDs */}
+              <div className="pd-card">
+                <div className="pd-card-header">
+                  <i className="fa fa-barcode pd-card-icon" />
+                  <span>IDs</span>
+                </div>
+                <div className="pd-fields">
+                  <div className="pd-field">
+                    <span className="pd-label">Quantity</span>
+                    <span className="pd-value pd-badge">{getValue(product.quantity)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Weight / Vol Sub QTY</span>
+                    <span className="pd-value">{getValue(product.wvsubqty)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Company Internal No</span>
+                    <span className="pd-value">{getValue(product.companyInternalNo)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">SAP Material No</span>
+                    <span className="pd-value">{getValue(product.sapMaterialNo)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financials */}
+              <div className="pd-card">
+                <div className="pd-card-header">
+                  <i className="fa fa-euro-sign pd-card-icon" />
+                  <span>Financials</span>
+                </div>
+                <div className="pd-fields">
+                  <div className="pd-field">
+                    <span className="pd-label">Budget No</span>
+                    <span className="pd-value">{getValue(product.budgetno)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Order Date</span>
+                    <span className="pd-value">{formatDate(product.orderdate, "DD-MM-YYYY")}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Expiry Date</span>
+                    <span className="pd-value pd-expiry">{formatDate(product.expiryDate, "DD-MM-YYYY")}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Ordered By</span>
+                    <span className="pd-value">{getValue(product.orderedby)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hazard Info */}
+              <div className="pd-card">
+                <div className="pd-card-header">
+                  <i className="fa fa-exclamation-triangle pd-card-icon" />
+                  <span>Hazard Info</span>
+                </div>
+                <div className="pd-fields">
+                  <div className="pd-field">
+                    <span className="pd-label">Hazardous Substance</span>
+                    <span className="pd-value">{getValue(product.hazardousSubstance)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">CMR Substance</span>
+                    <span className="pd-value">{getValue(product.cmrSubstance)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Skin Resorptive</span>
+                    <span className="pd-value">{getValue(product.skinResorptive)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Signal Words</span>
+                    <span className="pd-value">
+                      {Array.isArray(product.ghsSignalWord) ? product.ghsSignalWord.join(", ") : getValue(product.ghsSignalWord)}
+                    </span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">GHS Symbols</span>
+                    <span className="pd-value">
+                      {Array.isArray(product.ghsSymbols) && product.ghsSymbols.length > 0
+                        ? product.ghsSymbols.map((symbol: any, idx: any) => (
+                            <img key={idx} src={ghsImageMap[symbol]} alt={symbol} style={{ width: 40, height: 40, marginRight: 6 }} />
+                          ))
+                        : "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Safety Phrases — full width */}
+              <div className="pd-card pd-card-full">
+                <div className="pd-card-header">
+                  <i className="fa fa-shield-alt pd-card-icon" />
+                  <span>Safety Phrases</span>
+                </div>
+                <div className="pd-fields">
+                  <div className="pd-field">
+                    <span className="pd-label">H-Phrases</span>
+                    <span className="pd-value">
+                      {product.hPhrases ? (
+                        <><strong>{product.hPhrases}</strong>
+                          {hPhraseMap[product.hPhrases] && <span style={{ color: "#555", marginLeft: "8px" }}>— {hPhraseMap[product.hPhrases]}</span>}
+                        </>
+                      ) : "-"}
+                    </span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">P-Phrases</span>
+                    <span className="pd-value">
+                      {product.pPhrases ? (
+                        <><strong>{product.pPhrases}</strong>
+                          {pPhraseMap[product.pPhrases] && <span style={{ color: "#555", marginLeft: "8px" }}>— {pPhraseMap[product.pPhrases]}</span>}
+                        </>
+                      ) : "-"}
+                    </span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Substitution Check</span>
+                    <span className="pd-value">{getValue(product.substitutionCheck)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Substitution Option</span>
+                    <span className="pd-value">{getValue(product.substitutionOption)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Storage Location</span>
+                    <span className="pd-value">{getValue(product.storageLocation)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chemical Risk Assessment — full width */}
+              <div className="pd-card pd-card-full">
+                <div className="pd-card-header">
+                  <i className="fa fa-biohazard pd-card-icon" />
+                  <span>Chemical Risk Assessment</span>
+                </div>
+                <div className="pd-fields">
+                  <div className="pd-field">
+                    <span className="pd-label">Application of Hazardous Substance</span>
+                    <span className="pd-value">{getValue(product.applicationOfHazardousSubstance)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Concentration / Working Volume</span>
+                    <span className="pd-value">{getValue(product.concentrationWorkingVolume)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Lab No. Working with this Chemical</span>
+                    <span className="pd-value">{getValue(product.labNoWorkingWithChemical)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">No. of Employees Working with this Chemical</span>
+                    <span className="pd-value">{getValue(product.numberOfEmployees)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Handling Duration &gt; 15min/day?</span>
+                    <span className="pd-value">{getValue(product.handlingDurationGreater15Min)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Hazardous Due to Skin Contact?</span>
+                    <span className="pd-value">{getValue(product.hazardousDueToSkinContact)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Attachment — full width */}
+              <div className="pd-card pd-card-full">
+                <div className="pd-card-header">
+                  <i className="fa fa-paperclip pd-card-icon" />
+                  <span>Attachment</span>
+                </div>
+                <div className="pd-attachment">
+                  {product.filename || product.fileName ? (
+                    <>
+                      <i className="fa fa-file-pdf pd-file-icon" />
+                      <span className="pd-filename">{product.filename || product.fileName}</span>
+                      <button className="pd-btn pd-btn-outline pd-btn-sm" onClick={handleDownloadAttachment}>
+                        <i className="fa fa-download me-1" /> Download
+                      </button>
+                    </>
+                  ) : (
+                    <span className="pd-no-file">No attachment</span>
+                  )}
+                </div>
+              </div>
+
+            </div>
           </div>
         </>
       ) : (
@@ -584,7 +860,7 @@ const FineChemicalsDetails = () => {
 
       <Modal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} title="Update Fine Chemical Product">
         <ReusableForm
-          formConfig={updateProductFormConfig(budget || [], companyOptions, storageLocationOptions)}
+          formConfig={updateProductFormConfig(budget || [], companyOptions, storageLocationOptions, hPhraseOptions, pPhraseOptions)}
           initialValues={updateProd || {}}
           onSubmit={handleUpdateSubmit}
           onFieldChange={handleCompanyFieldChange}

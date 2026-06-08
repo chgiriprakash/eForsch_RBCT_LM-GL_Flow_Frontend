@@ -205,6 +205,11 @@ const Orders = () => {
   const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
   const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   const [storageLocationOptions, setStorageLocationOptions] = useState<string[]>([]);
+  const [rejectModal, setRejectModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
+  const [rejectReason, setRejectReason] = useState("");
+  const [deliveryModal, setDeliveryModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
+  const [deliveryForm, setDeliveryForm] = useState({ storageLocation: "", orderType: "bulk", barcodeInfo: "" });
+  const [viewOrderModal, setViewOrderModal] = useState<{ open: boolean; order: any | null }>({ open: false, order: null });
   console.log("groupOptions:", groupOptions);
   
   console.log("selectedOrder:", selectedOrder);
@@ -220,11 +225,25 @@ const Orders = () => {
 
       // ✅ Filter list by role
       // Approval flow: Scientist → labMgmt (1st approver) → groupleader (2nd approver) → PO
-      let filteredList = normalizedData.list || [];
-      // labMgmt is the FIRST approver — sees ALL pending orders (no frontend filter needed)
-      if (userRole?.role?.toLowerCase() === "groupleader") {
-        // groupleader is the SECOND approver — only sees lab-approved orders
-        filteredList = filteredList.filter((item: Order) => item.labApproved === true);
+      let filteredList = (normalizedData.list || []).filter(
+        (item: Order) => item.status?.toLowerCase() !== "rejected"
+      );
+      const role = userRole?.role?.toLowerCase();
+
+      // labMgmt sees only orders where labApproved = false AND status = Pending
+      if (role === "labmgmt") {
+        filteredList = filteredList.filter((item: any) =>
+          (item.labApproved === false || item.labapproved === false) &&
+          item.status?.toLowerCase() === "pending"
+        );
+      }
+
+      // groupleader sees only orders where labApproved = true AND adminApproved = false
+      if (role === "groupleader") {
+        filteredList = filteredList.filter((item: any) =>
+          (item.labApproved === true || item.labapproved === true) &&
+          (item.adminApproved === false || item.adminapproved === false)
+        );
       }
 
       const updatedList = enhanceList(filteredList, userRole);
@@ -245,7 +264,9 @@ const fetchPodeptData = async () => {
     console.log("Normalized Data:", normalizedData);
 
     if (result) {
-      let filteredList = normalizedData.list || [];
+      let filteredList = (normalizedData.list || []).filter(
+        (item: any) => item.status?.toLowerCase() !== "rejected"
+      );
 
       // ✅ Only for PO Dept & Purchase Department → filter approved items
       const role = userRole?.role?.toLowerCase();
@@ -340,16 +361,30 @@ const normalizeKeysAndCleanData = (data: any) => {
     // Define spelling corrections
     const spellingCorrections: Record<string, string> = {
         recieved: "received",
-        catalogue: "catalogue", // Keep backend spelling (since form uses it)
+        catalogue: "catalogue",
         companyinternalno: "companyinternalno",
-        companyInternalNo: "companyinternalno", // ✅ normalize
+        companyInternalNo: "companyinternalno",
         sapmaterialno: "sapmaterialno",
-        sapMaterialNo: "sapmaterialno", // ✅ normalize
-        remark: "remarks", // 
+        sapMaterialNo: "sapmaterialno",
+        remark: "remarks",
+        labapproved: "labApproved",      // preserve camelCase
+        adminapproved: "adminApproved",  // preserve camelCase
     };
 
-    // Define keys to remove
-    const unwantedKeys = new Set(["adminName", "userName", "createdBy", "updatedBy", "expiryDate", "approvalStatusDate"]);
+    // Define ONLY the columns to show (whitelist) with display labels
+    const allowedColumns: { key: string; label: string; sortable?: boolean }[] = [
+      { key: "productName",     label: "Product Name",          sortable: true  },
+      { key: "companyName",     label: "Company",               sortable: true  },
+      { key: "catalogue",       label: "Article Number",        sortable: false },
+      { key: "quantity",        label: "Quantity",              sortable: true  },
+      { key: "weightvolsubqty", label: "Qty / Packaging Unit",  sortable: false },
+      { key: "price",           label: "Price",                 sortable: true  },
+      { key: "budgetno",        label: "Budget Number",         sortable: false },
+      { key: "orderedby",       label: "Ordered By",            sortable: false },
+      { key: "status",          label: "Status",                sortable: true  },
+    ];
+
+    const allowedKeys = new Set(allowedColumns.map(c => c.key));
 
     // Create a mapping of lowercase column keys to their actual keys (after spelling corrections)
     const keyMapping: Record<string, string> = {};
@@ -358,30 +393,33 @@ const normalizeKeysAndCleanData = (data: any) => {
         keyMapping[column.key.toLowerCase()] = correctedKey;
     });
 
-    // Normalize keys in the list, fix spelling errors, and remove unwanted keys
+    // Keep all list data (we need hidden fields like orderId, labApproved etc. for logic)
     const normalizedList = list.map((item: any) => {
         const normalizedItem: any = {};
         Object.keys(item).forEach((key) => {
             const normalizedKey = keyMapping[key.toLowerCase()] || spellingCorrections[key] || key;
-            if (!unwantedKeys.has(normalizedKey)) {
-                normalizedItem[normalizedKey] = item[key];
-            }
+            normalizedItem[normalizedKey] = item[key];
         });
         return normalizedItem;
     });
 
-    // Normalize columns, fix spelling errors, remove unwanted keys, and remove duplicates
+    // Build columns from whitelist only, preserving order
     const seenKeys = new Set();
-    const normalizedColumns = columns
-        .map((column: any) => ({
-            ...column,
-            key: spellingCorrections[column.key] || column.key,  // Apply spelling correction if needed
-        }))
-        .filter((column: any) => !unwantedKeys.has(column.key)) // Remove unwanted columns
+    const normalizedColumns = allowedColumns
+        .map((allowed) => {
+            const backendCol = columns.find((c: any) =>
+                (spellingCorrections[c.key] || c.key) === allowed.key
+            );
+            return {
+                ...(backendCol || {}),
+                key: allowed.key,
+                label: allowed.label,
+                sortable: allowed.sortable ?? false,
+                filterable: true,
+            };
+        })
         .filter((column: any) => {
-            if (seenKeys.has(column.key)) {
-                return false; // Skip if key already exists
-            }
+            if (seenKeys.has(column.key)) return false;
             seenKeys.add(column.key);
             return true;
         });
@@ -407,18 +445,6 @@ const enhanceColumns = (columns: OrderColumn[], userRole: any) => {
         ? (row: Order) => openOrderDetails(row)
         : column.onClick,
   }));
-
-  // ✅ Add Inventory Icon column only once
-  if (!updatedColumns.some((col) => col.key === "inventoryType")) {
-    updatedColumns.push({
-      key: "inventoryType",
-      label: "Inventory Type",
-      sortable: false,
-      isDate: false,
-      hidden: false,
-      onClick: undefined
-    });
-  }
 
   // ✅ Role-based action column
   if (["admin", "labmgmt", "podept", "purchase department", "groupleader"].includes(role)) {
@@ -453,12 +479,6 @@ const enhanceList = (list: Order[], userRole: any) => {
           >
             Ordered
           </button>
-          <button
-            className="btn-color upload-wrapper btn btn-danger"
-            onClick={() => handleOrder(item, "Delivered")}
-          >
-            Delivered
-          </button>
         </>
       );
     }
@@ -466,20 +486,30 @@ const enhanceList = (list: Order[], userRole: any) => {
     if (role === "labmgmt") {
       requestButtons = (
         <>
-          <button
-            className="btn-color upload-wrapper btn btn-primary"
-            onClick={() => handleApproval(item, true)}
-            disabled={!!item.labApproved}
-          >
-            Approve
-          </button>
+          {item.status?.toLowerCase() === "ordered" && !!item.labApproved && !!item.adminApproved && (
           <button
             className="btn-color upload-wrapper btn btn-danger"
-            onClick={() => handleApproval(item, false)}
-            disabled={!!item.labApproved}
+            onClick={() => { setDeliveryModal({ open: true, order: item }); setDeliveryForm({ storageLocation: "", orderType: "bulk", barcodeInfo: "" }); }}
           >
-            Reject
+            Delivered
           </button>
+          )}
+          {item.status?.toLowerCase() === "pending" && (
+            <button
+              className="btn-color upload-wrapper btn btn-primary"
+              onClick={() => handleApproval(item, true)}
+            >
+              Approve
+            </button>
+          )}
+          {item.status?.toLowerCase() === "pending" && (
+            <button
+              className="btn-color upload-wrapper btn btn-danger"
+              onClick={() => { setRejectModal({ open: true, order: item }); setRejectReason(""); }}
+            >
+              Reject
+            </button>
+          )}
         </>
       );
     }
@@ -543,19 +573,15 @@ const enhanceList = (list: Order[], userRole: any) => {
   };
 
   const openOrderDetails = (row: any) => {
-    // const selected = origalData?.list.filter((row) => row.orderId === rowId);
-    // setSelectedOrder(selected ? selected[0] : null);
-
-    //   if(row.inventoryType === "fineChemicalInventory") {
-    //   const result = await dispatch(getFineChemicalById(parseInt(row.orderId))).unwrap();
-    //   setSelectedOrder(mapFormDataToOrder(result.data.list[0]));
-    // } else {
-    //    const result = await dispatch(getProductById(parseInt(row.orderId))).unwrap();
-    //    setSelectedOrder(mapFormDataToOrder(result.data));
-    // }
-
-    setSelectedOrder(mapFormDataToOrder(row, userRole));
-    setIsModalOpen(true);
+    const role = userRole?.role?.toLowerCase();
+    if (role === "labmgmt") {
+      // Find the raw order from origalData for full field access
+      const rawOrder = origalData?.list.find((o: any) => o.orderId === row.orderId) || row;
+      setViewOrderModal({ open: true, order: rawOrder });
+    } else {
+      setSelectedOrder(mapFormDataToOrder(row, userRole));
+      setIsModalOpen(true);
+    }
   };
 
   // 🟢 Approve/Reject Order
@@ -563,15 +589,19 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
   try {
     let action;
 
-    if (userRole.role === "admin" || userRole.role === "groupleader") {
+    const normalizedRole = userRole.role?.toLowerCase();
+    if (normalizedRole === "admin" || normalizedRole === "groupleader") {
       action = isApproved ? approveAdmin : rejectAdmin;
-    } else if (userRole.role === "labMgmt") {
+    } else if (normalizedRole === "labmgmt") {
       action = isApproved ? approvelabMgmt : rejectlabMgmt;
     } else {
       throw new Error("Unauthorized role");
     }
 
-    await dispatch(action(order.orderId)).unwrap();
+    const payload = (!isApproved && normalizedRole === "labmgmt")
+      ? { id: order.orderId, rejectReason: rejectReason || "" }
+      : order.orderId;
+    await dispatch(action(payload)).unwrap();
     alert(`Order ${isApproved ? "Approved" : "Rejected"} successfully!`);
 
     if (userRole.role === "podept" || userRole.role === 'purchase department') {
@@ -586,11 +616,15 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
 };
 
 
-   // 🟢 Ordered/Delievered Status Order
-  const handleOrder = async (order: Order, status: string) => {
+   // 🟢 Ordered/Delivered Status Order
+  const handleOrder = async (order: Order, status: string, extra?: { storageLocation?: string; orderType?: string; barcodeInfo?: string }) => {
     try {
+      const user = { email: userRole.email, name: userRole.name, role: userRole.role, groupName: userRole.groupName };
       const apiName = (status === "Ordered") ? orderedPOD : deliveredPOD;
-      await dispatch(apiName({ id: order.orderId, user: { email: userRole.email, name: userRole.name, role: userRole.role, groupName: userRole.groupName } })).unwrap();
+      const payload = status === "Ordered"
+        ? { id: order.orderId, user }
+        : { id: order.orderId, user, orderType: extra?.orderType, barcodeInfo: extra?.barcodeInfo };
+      await dispatch(apiName(payload)).unwrap();
       alert(`Order ${status} successfully!`);
       
       if(userRole.role === "podept" || userRole.role === 'purchase department') {
@@ -934,6 +968,251 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
           onFieldChange={handleCompanyFieldChange}
         />
       </Modal>
+
+      {/* Delivery Modal */}
+      {deliveryModal.open && (
+        <div className="reject-modal-overlay">
+          <div className="reject-modal">
+            <h5 className="reject-modal-title">
+              <i className="fa fa-truck me-2 text-success" />
+              Mark as Delivered
+            </h5>
+
+            <div className="reject-modal-field">
+              <label className="reject-modal-label">Storage Location</label>
+              <div className="pd-value" style={{ padding: "8px 12px", background: "#f4f7fb", borderRadius: "8px", border: "1px solid #e0e6ef", fontSize: "14px" }}>
+                {deliveryModal.order?.storageLocation || <span style={{ color: "#aaa" }}>Not specified</span>}
+              </div>
+            </div>
+
+            <div className="reject-modal-field">
+              <label className="reject-modal-label">Order Type <span className="text-danger">*</span></label>
+              <div style={{ display: "flex", gap: 24, marginTop: 6 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="orderType"
+                    value="bulk"
+                    checked={deliveryForm.orderType === "bulk"}
+                    onChange={() => setDeliveryForm({ ...deliveryForm, orderType: "bulk", barcodeInfo: "" })}
+                  />
+                  Bulk Order
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="orderType"
+                    value="nonbulk"
+                    checked={deliveryForm.orderType === "nonbulk"}
+                    onChange={() => setDeliveryForm({ ...deliveryForm, orderType: "nonbulk" })}
+                  />
+                  Non-Bulk Order
+                </label>
+              </div>
+            </div>
+
+            {deliveryForm.orderType === "nonbulk" && (
+              <div className="reject-modal-field">
+                <label className="reject-modal-label">Barcode Information <span className="text-danger">*</span></label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Enter barcode..."
+                  value={deliveryForm.barcodeInfo}
+                  onChange={(e) => setDeliveryForm({ ...deliveryForm, barcodeInfo: e.target.value })}
+                />
+              </div>
+            )}
+
+            <div className="reject-modal-actions">
+              <button className="btn btn-secondary" onClick={() => setDeliveryModal({ open: false, order: null })}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-success"
+                disabled={
+                  deliveryForm.orderType === "nonbulk" && !deliveryForm.barcodeInfo.trim()
+                }
+                onClick={async () => {
+                  if (deliveryModal.order) {
+                    await handleOrder(deliveryModal.order, "Delivered", {
+                      storageLocation: deliveryForm.storageLocation,
+                      orderType: deliveryForm.orderType,
+                      barcodeInfo: deliveryForm.barcodeInfo,
+                    });
+                    setDeliveryModal({ open: false, order: null });
+                  }
+                }}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Order Details Modal */}
+      {viewOrderModal.open && viewOrderModal.order && (
+        <div className="reject-modal-overlay">
+          <div className="reject-modal" style={{ maxWidth: 700, width: "95%" }}>
+
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+              <div>
+                <span className="pd-breadcrumb">Order</span>
+                <h2 className="pd-product-name">{viewOrderModal.order.productName}</h2>
+              </div>
+              <button type="button" style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#aaa", lineHeight: 1 }}
+                onClick={() => setViewOrderModal({ open: false, order: null })}>×</button>
+            </div>
+
+            {/* Cards */}
+            <div className="pd-grid">
+
+              {/* Product Info */}
+              <div className="pd-card">
+                <div className="pd-card-header"><i className="fa fa-flask pd-card-icon" /><span>Product Info</span></div>
+                <div className="pd-fields">
+                  {[
+                    { label: "Company",            value: viewOrderModal.order.companyName || viewOrderModal.order.companyname },
+                    { label: "Catalogue No",        value: viewOrderModal.order.catalogue },
+                    { label: "Quantity",            value: viewOrderModal.order.quantity },
+                    { label: "Qty / Pkg Unit",      value: viewOrderModal.order.weightvolsubqty || viewOrderModal.order.weightVolSubQty },
+                    { label: "Concentration",       value: viewOrderModal.order.concentration },
+                    { label: "Remarks",             value: viewOrderModal.order.remarks },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="pd-field">
+                      <span className="pd-label">{label}</span>
+                      <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* IDs */}
+              <div className="pd-card">
+                <div className="pd-card-header"><i className="fa fa-barcode pd-card-icon" /><span>IDs</span></div>
+                <div className="pd-fields">
+                  {[
+                    { label: "Company Internal No", value: viewOrderModal.order.companyinternalno || viewOrderModal.order.companyInternalNo },
+                    { label: "SAP Material No",     value: viewOrderModal.order.sapmaterialno || viewOrderModal.order.sapMaterialNo },
+                    { label: "Expiry Date",         value: viewOrderModal.order.expiryDate ? new Date(viewOrderModal.order.expiryDate).toLocaleDateString("en-GB") : null },
+                    { label: "Order Date",          value: viewOrderModal.order.orderdate ? new Date(viewOrderModal.order.orderdate).toLocaleDateString("en-GB") : null },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="pd-field">
+                      <span className="pd-label">{label}</span>
+                      <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Financials */}
+              <div className="pd-card">
+                <div className="pd-card-header"><i className="fa fa-euro-sign pd-card-icon" /><span>Financials</span></div>
+                <div className="pd-fields">
+                  {[
+                    { label: "Price",      value: viewOrderModal.order.price },
+                    { label: "Budget No",  value: viewOrderModal.order.budgetno },
+                    { label: "Ordered By", value: viewOrderModal.order.orderedby },
+                    { label: "Status",     value: viewOrderModal.order.status },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="pd-field">
+                      <span className="pd-label">{label}</span>
+                      <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Ownership */}
+              <div className="pd-card">
+                <div className="pd-card-header"><i className="fa fa-users pd-card-icon" /><span>Ownership</span></div>
+                <div className="pd-fields">
+                  {[
+                    { label: "Group Name",   value: viewOrderModal.order.groupName },
+                    { label: "Added By",     value: viewOrderModal.order.createdBy || viewOrderModal.order.userName },
+                    { label: "LM Approved",  value: viewOrderModal.order.labApproved != null ? (viewOrderModal.order.labApproved ? "Yes" : "No") : null },
+                    { label: "GL Approved",  value: viewOrderModal.order.adminApproved != null ? (viewOrderModal.order.adminApproved ? "Yes" : "No") : null },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="pd-field">
+                      <span className="pd-label">{label}</span>
+                      <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Delivery Info */}
+              <div className="pd-card pd-card-full">
+                <div className="pd-card-header"><i className="fa fa-truck pd-card-icon" /><span>Delivery Info</span></div>
+                <div className="pd-fields">
+                  {[
+                    { label: "Storage Location", value: viewOrderModal.order.storageLocation },
+                    { label: "Order Type",        value: viewOrderModal.order.orderType },
+                    { label: "Barcode Info",      value: viewOrderModal.order.barcodeInfo },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="pd-field">
+                      <span className="pd-label">{label}</span>
+                      <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+              <button className="btn btn-secondary" onClick={() => setViewOrderModal({ open: false, order: null })}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Confirmation Modal */}
+      {rejectModal.open && (
+        <div className="reject-modal-overlay">
+          <div className="reject-modal">
+            <h5 className="reject-modal-title">
+              <i className="fa fa-exclamation-triangle me-2 text-danger" />
+              Confirm Rejection
+            </h5>
+            <p className="reject-modal-subtitle">
+              Are you sure you want to reject this order?
+            </p>
+            <div className="reject-modal-field">
+              <label className="reject-modal-label">Rejection Reason <span className="text-danger">*</span></label>
+              <textarea
+                className="reject-modal-textarea"
+                rows={4}
+                placeholder="Please provide a reason for rejection..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+            </div>
+            <div className="reject-modal-actions">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setRejectModal({ open: false, order: null })}
+              >
+                No, Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                disabled={!rejectReason.trim()}
+                onClick={async () => {
+                  if (rejectModal.order) {
+                    await handleApproval(rejectModal.order, false);
+                    setRejectModal({ open: false, order: null });
+                  }
+                }}
+              >
+                Yes, Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

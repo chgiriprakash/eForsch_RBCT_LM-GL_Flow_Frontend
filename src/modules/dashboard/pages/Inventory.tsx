@@ -42,33 +42,33 @@ const Inventory = () => {
   );
 
   const renderBreadcrumbs = () => {
-  const segments = location.pathname.split('/').filter(Boolean);
+    const segments = location.pathname.split('/').filter(Boolean);
+    // Drop raw numeric IDs from the breadcrumb trail
+    const displaySegments = segments.filter(s => isNaN(Number(s)));
 
-  return (
-    <div className="breadcrumbs">
-      {segments.map((segment, index) => {
-        const path = '/' + segments.slice(0, index + 1).join('/');
+    return (
+      <nav className="breadcrumbs" aria-label="breadcrumb">
+        {displaySegments.map((segment, index) => {
+          const path = '/' + segments.slice(0, segments.indexOf(segment) + 1).join('/');
+          const isLast = index === displaySegments.length - 1;
+          const label = segment.toLowerCase() === 'inventory'
+            ? <><i className="fa fa-flask" /> Inventory</>
+            : decodeURIComponent(segment.replace(/-/g, ' '));
 
-        // Replace 'inventory' with flask icon
-        const isInventory = segment.toLowerCase() === 'inventory';
-        const label = isInventory ? (
-          <i className="fa fa-flask" style={{ marginRight: '4px' }} />
-        ) : (
-          decodeURIComponent(segment.replace(/-/g, ' '))
-        );
-
-        return (
-          <span key={index}>
-            <NavLink to={path} style={{ textTransform: 'capitalize' }}>
-              {label}
-            </NavLink>
-            {index < segments.length - 1 && ' / '}
-          </span>
-        );
-      })}
-    </div>
-  );
-};
+          return (
+            <span key={index} className="breadcrumb-item">
+              {isLast ? (
+                <span className="breadcrumb-current">{label}</span>
+              ) : (
+                <NavLink to={path} className="breadcrumb-link">{label}</NavLink>
+              )}
+              {!isLast && <i className="fa fa-chevron-right breadcrumb-sep" />}
+            </span>
+          );
+        })}
+      </nav>
+    );
+  };
 
 
   return (

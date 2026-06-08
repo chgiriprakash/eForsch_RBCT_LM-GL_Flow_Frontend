@@ -121,8 +121,8 @@ export const approveAdmin = createThunk("dashboard/approveGroupLeader/approve", 
 );
 
 // 🟢 Approve/Reject Lab Manager Calls
-export const rejectlabMgmt = createThunk("dashboard/labReject", (id: number) =>
-  axiosClient.get(`api/orders/labReject/${id}`).then((res) => res.data)
+export const rejectlabMgmt = createThunk("dashboard/labReject", ({ id, rejectReason }: { id: number; rejectReason: string }) =>
+  axiosClient.get(`api/orders/labReject/${id}?rejectReason=${encodeURIComponent(rejectReason)}`).then((res) => res.data)
 );
 
 export const approvelabMgmt = createThunk("dashboard/labApprove/approve", (id: number) =>
@@ -146,8 +146,20 @@ export const orderedPOD = createThunk(
 
 export const deliveredPOD = createThunk(
   "dashboard/delivered",
-  ({ id, user }: { id: number; user: { email: string; name: string; role: string; groupName: string } }) =>
-  axiosClient.get(`api/orders/delivered/${id}?page=1&size=10000&id=10&email=${user.email}&name=${user.name}&role=${user.role}`).then((res) => res.data)
+  ({ id, user, deliveryStorageLocation, orderType, barcodeInfo }: {
+    id: number;
+    user: { email: string; name: string; role: string; groupName: string };
+    orderType?: string;
+    barcodeInfo?: string;
+  }) => {
+    const params = new URLSearchParams({
+      page: "1", size: "10000", id: "10",
+      email: user.email, name: user.name, role: user.role,
+    });
+    if (orderType) params.append("orderType", orderType);
+    if (barcodeInfo) params.append("barcodeInfo", barcodeInfo);
+    return axiosClient.get(`api/orders/delivered/${id}?${params.toString()}`).then((res) => res.data);
+  }
 );
 
 // 🟢 CRUD operations for Orders
@@ -244,16 +256,11 @@ export const addFineChemicals = createThunk("dashboard/finechemical/addFineChemi
     .then((res) => res.data)
 );
 
-export const editFineChemicals = createThunk("dashboard/updateProduct", (product: any) =>
-  // axiosClient.put(`api/finechemical/updateFineChemical/${product.productid}`, product).then((res) => res.data)
+export const editFineChemicals = createThunk("dashboard/updateProduct", (payload: any) =>
   axiosClient
-    .put(`api/finechemical/updateFineChemical/${product.productId}`, product,
-    // {
-    //   headers: {
-    //     "Content-Type": "multipart/form-data",
-    //   },
-    // }
-    )
+    .put(`api/finechemical/updateFineChemical/${payload.productId}`, payload, {
+      headers: { "Content-Type": "application/json" },
+    })
     .then((res) => res.data)
 );
 
@@ -458,14 +465,18 @@ export const downloadPDFInv = createAsyncThunk(
 // 🟢 Upload Product API
 export const downloadPDFFineChecm = createAsyncThunk(
   "dashboard/finechemical",
-  async (id: number) => {
-    const response = await axiosClient.get(`api/finechemical/${id}/downloadFile`, {
-      responseType: "blob",
-    });
-
-    const blob = response.data;
-    const url = URL.createObjectURL(blob); // Convert Blob to URL
-    return url;
+  async (id: number, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.get(`api/finechemical/${id}/downloadFile`, {
+        responseType: "blob",
+      });
+      const blob = response.data;
+      if (!blob || blob.size === 0) return rejectWithValue("No file content");
+      const url = URL.createObjectURL(blob);
+      return url;
+    } catch (error: any) {
+      return rejectWithValue(error?.response?.status === 404 ? "No attachment found" : "Download failed");
+    }
   }
 );
 
@@ -1036,7 +1047,7 @@ export const downloadProjectAttachment = createThunk(
 
     // ✅ proper mime type
     const contentType =
-      response.headers["content-type"] ||
+      (response.headers["content-type"] as string) ||
       "application/octet-stream";
 
     const blob = new Blob([response.data], {
@@ -1368,7 +1379,7 @@ export const downloadNotebookAttachment = createThunk(
 
     // ✅ detect proper file type
     const contentType =
-      response.headers["content-type"] || "application/pdf";
+      (response.headers["content-type"] as string) || "application/pdf";
 
     // ✅ create blob with mime type
     const blob = new Blob([response.data], {
@@ -1896,5 +1907,153 @@ const dashboardSlice = createSlice({
     });
   },
 });
+
+// ===================== H-PHRASES =====================
+
+export const getHPhrases = createAsyncThunk<any>(
+  'hphrases/getAll',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.get<any>('hphrases/getAll');
+      return response.data;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+export const createHPhrase = createAsyncThunk<any, any>(
+  'hphrases/create',
+  async (dto, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.post<any>('hphrases/create', dto);
+      return response.data;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+export const updateHPhrase = createAsyncThunk<any, { id: number; dto: any }>(
+  'hphrases/update',
+  async ({ id, dto }, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.put<any>(`hphrases/update/${id}`, dto);
+      return response.data;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+export const deleteHPhrase = createAsyncThunk<any, number>(
+  'hphrases/delete',
+  async (id, { rejectWithValue }) => {
+    try {
+      await axiosClient.delete(`hphrases/delete/${id}`);
+      return id;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+// ===================== P-PHRASES =====================
+
+export const getPPhrases = createAsyncThunk<any>(
+  'pphrases/getAll',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.get<any>('pphrases/getAll');
+      return response.data;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+export const createPPhrase = createAsyncThunk<any, any>(
+  'pphrases/create',
+  async (dto, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.post<any>('pphrases/create', dto);
+      return response.data;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+export const updatePPhrase = createAsyncThunk<any, { id: number; dto: any }>(
+  'pphrases/update',
+  async ({ id, dto }, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.put<any>(`pphrases/update/${id}`, dto);
+      return response.data;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+export const deletePPhrase = createAsyncThunk<any, number>(
+  'pphrases/delete',
+  async (id, { rejectWithValue }) => {
+    try {
+      await axiosClient.delete(`pphrases/delete/${id}`);
+      return id;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+// ===================== COMPANY CRUD =====================
+
+export const createCompany = createAsyncThunk<any, any>(
+  'companies/create',
+  async (dto, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.post<any>('companies/createCompany', dto);
+      return response.data;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+export const updateCompany = createAsyncThunk<any, any>(
+  'companies/update',
+  async (dto, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.put<any>('companies/updateCompany', dto);
+      return response.data;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+export const deleteCompany = createAsyncThunk<any, number>(
+  'companies/delete',
+  async (id, { rejectWithValue }) => {
+    try {
+      await axiosClient.delete(`companies/${id}`);
+      return id;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+// ===================== STORAGE LOCATION CRUD =====================
+
+export const createStorageLocation = createAsyncThunk<any, any>(
+  'storageLocations/create',
+  async (dto, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.post<any>('storageLocations/create', dto);
+      return response.data;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+export const updateStorageLocation = createAsyncThunk<any, any>(
+  'storageLocations/update',
+  async (dto, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.put<any>('storageLocations/update', dto);
+      return response.data;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
+
+export const deleteStorageLocation = createAsyncThunk<any, number>(
+  'storageLocations/delete',
+  async (id, { rejectWithValue }) => {
+    try {
+      await axiosClient.delete(`storageLocations/delete/${id}`);
+      return id;
+    } catch (error) { return rejectWithValue(error); }
+  }
+);
 
 export default dashboardSlice.reducer;

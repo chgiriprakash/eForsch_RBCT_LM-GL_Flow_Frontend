@@ -117,60 +117,25 @@ const GeneralInventory = () => {
         throw new Error("No data received from API");
       }
   
-      // Ensure `columns` is defined and not empty
-      const columnsFromAPI = normalizedData.columns && normalizedData.columns.length > 0 ? normalizedData.columns : null;
-      
-      if (!columnsFromAPI) {
-        console.warn("API returned no columns. Using default columns.");
-      }
-  
-      // Define default columns in case API does not return them
-      const defaultColumns: Column[] = [
+      // Fixed listing columns — only show these 8 fields
+      const updatedColumns: Column[] = [
         {
-          key: "productName", label: "Product Name", sortable: true,
-          hidden: false
+          key: "productname",
+          label: "Product Name",
+          sortable: true,
+          hidden: false,
+          onClick: (row: Product) => openProductDetails(row),
         },
-        {
-          key: "catalogue", label: "catalogue", sortable: true,
-          hidden: false
-        },
-        {
-          key: "companyName", label: "Company Name", sortable: true,
-          hidden: false
-        },
-        {
-          key: "quantity", label: "Quantity", sortable: true,
-          hidden: false
-        },
-        {
-          key: "priority", label: "Priority", sortable: true,
-          hidden: false
-        },
-        {
-          key: "received", label: "Received", sortable: true,
-          hidden: false
-        },
-        {
-          key: "remarks", label: "Remark",
-          hidden: false
-        },
-        {
-          key: "expiryDate", label: "Expiry Date", isDate: true, sortable: true,
-          hidden: false
-        },
+        { key: "companyname",      label: "Company",                  sortable: true,  hidden: false },
+        { key: "catalogue",        label: "Article Number",            sortable: true,  hidden: false },
+        { key: "quantity",         label: "Quantity",                  sortable: true,  hidden: false },
+        { key: "weightvolsubqty",  label: "Qty / Packaging Unit",      sortable: false, hidden: false },
+        { key: "price",            label: "Price",                     sortable: true,  hidden: false },
+        { key: "budgetno",         label: "Budget Number",             sortable: true,  hidden: false },
+        { key: "orderedby",        label: "Ordered By",                sortable: false, hidden: false },
+        { key: "action",           label: "Action",                    sortable: false, hidden: false },
       ];
-  
-      // Use columns from API if available, otherwise fallback to default
-      const updatedColumns = (columnsFromAPI || defaultColumns).map((column: Column) => ({
-        ...column,
-        onClick:
-          column.key === "productname"
-            ? (row: Product) => openProductDetails(row)
-            : undefined,
-        isDate: column.key === "expiryDate" || column.key === "orderdate" ? true : undefined,
-        hidden: column.key.includes("productId") ? true : false, // Hide productid column
-      }));
-  
+
       setData({
         list: normalizedData.list || [],
         columns: updatedColumns,
@@ -185,38 +150,14 @@ const GeneralInventory = () => {
       setData({
         list: [],
         columns: [
-          {
-            key: "productName", label: "Product Name", sortable: true,
-            hidden: false
-          },
-          {
-            key: "catalogue", label: "catalogue", sortable: true,
-            hidden: false
-          },
-          {
-            key: "companyName", label: "Company Name", sortable: true,
-            hidden: false
-          },
-          {
-            key: "quantity", label: "Quantity", sortable: true,
-            hidden: false
-          },
-          {
-            key: "priority", label: "Priority", sortable: true,
-            hidden: false
-          },
-          {
-            key: "received", label: "Received", sortable: true,
-            hidden: false
-          },
-          {
-            key: "remarks", label: "Remark",
-            hidden: false
-          },
-          {
-            key: "expiryDate", label: "Expiry Date", isDate: true, sortable: true,
-            hidden: false
-          },
+          { key: "productname",     label: "Product Name",        sortable: true,  hidden: false },
+          { key: "companyname",     label: "Company",             sortable: true,  hidden: false },
+          { key: "catalogue",       label: "Article Number",      sortable: true,  hidden: false },
+          { key: "quantity",        label: "Quantity",            sortable: true,  hidden: false },
+          { key: "weightvolsubqty", label: "Qty / Packaging Unit",sortable: false, hidden: false },
+          { key: "price",           label: "Price",               sortable: true,  hidden: false },
+          { key: "budgetno",        label: "Budget Number",       sortable: true,  hidden: false },
+          { key: "orderedby",       label: "Ordered By",          sortable: false, hidden: false },
         ],
         pagination: defaultPagination,
       });

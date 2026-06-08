@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import ReactQuill from "react-quill";
+// Lazy load ReactQuill to avoid bundling issues
+const ReactQuill = lazy(() => import("react-quill").then(m => ({ default: m.default })));
 import "react-quill/dist/quill.snow.css";
 
 import { useAppDispatch } from "../../../shared/hooks/useAppDispatch";
@@ -205,9 +206,11 @@ const WriteNote = () => {
       />
 
       {/* Editor */}
-      <ReactQuill theme="snow" value={content}
-        onChange={setContent}
-      />
+      <Suspense fallback={<div>Loading editor...</div>}>
+        <ReactQuill theme="snow" value={content}
+          onChange={setContent}
+        />
+      </Suspense>
 
       {/* Budget Preview */}
       {budgetIds.length > 0 && (

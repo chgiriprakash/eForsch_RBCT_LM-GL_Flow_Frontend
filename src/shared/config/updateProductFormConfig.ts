@@ -2,6 +2,8 @@ const updateProductFormConfig = (
   budgetOptions: string[],
   companyOptions: { label: string; key: string }[] = [],
   storageLocationOptions: string[] = [],
+  hPhraseOptions: { label: string; key: string }[] = [],
+  pPhraseOptions: { label: string; key: string }[] = [],
 ) => [
 //   {
 //     id: "productId",
@@ -85,7 +87,7 @@ const updateProductFormConfig = (
     id: "concentration",
     label: "Concentration",
     type: "text",
-    validation: { required: true },
+    validation: { required: false },
   },
   {
     id: "price",
@@ -139,6 +141,7 @@ const updateProductFormConfig = (
     id: "ghsSymbols",
     label: "GHS Symbols",
     type: "checkbox-group",
+    colSize: "col-12",
     options: [
       "Explosive",
       "Flammable",
@@ -160,14 +163,16 @@ const updateProductFormConfig = (
   },
   {
     id: "hPhrases",
-    label: "H-Phrases (e.g. +H332)",
-    type: "text",
+    label: "H-Phrases",
+    type: "typeahead",
+    options: hPhraseOptions,
     validation: { required: true },
   },
   {
     id: "pPhrases",
-    label: "P-Phrases (e.g. +P332)",
-    type: "text",
+    label: "P-Phrases",
+    type: "typeahead",
+    options: pPhraseOptions,
     validation: { required: true },
   },
   {
@@ -223,12 +228,51 @@ const updateProductFormConfig = (
 //     type: "text",
 //     readOnly: true,
 //   },
-{
+  {
+    id: "applicationOfHazardousSubstance",
+    label: "Application of the Hazardous Substance",
+    type: "textarea",
+    colSize: "col-12",
+    validation: { required: false },
+  },
+  {
+    id: "concentrationWorkingVolume",
+    label: "Concentration / Working Volume",
+    type: "text",
+    validation: { required: false },
+  },
+  {
+    id: "labNoWorkingWithChemical",
+    label: "Lab No. Working with this Chemical",
+    type: "text",
+    validation: { required: false },
+  },
+  {
+    id: "numberOfEmployees",
+    label: "Number of Employees Working with this Chemical",
+    type: "text",
+    validation: { required: false },
+  },
+  {
+    id: "handlingDurationGreater15Min",
+    label: "Is Handling Duration Greater than 15min/day?",
+    type: "select",
+    options: ["Yes", "No"],
+    validation: { required: false },
+  },
+  {
+    id: "hazardousDueToSkinContact",
+    label: "Hazardous Due to Skin Contact?",
+    type: "select",
+    options: ["Yes", "No"],
+    validation: { required: false },
+  },
+  {
     id: "attachment",
     label: "Attachment",
     type: "file",
     validation: { required: false },
-},
+  },
 ];
 
 export default updateProductFormConfig;

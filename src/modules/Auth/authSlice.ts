@@ -108,6 +108,12 @@ export const loginUser = createAsyncThunk<AuthResponse, LoginCredentials>(
     try {
       const response = await axiosClient.post<AuthResponse>('auth/login', credentials);
 
+      // Check if response has expected structure
+      if (!response.data?.data?.user) {
+        console.error('Invalid login response structure:', response.data);
+        return rejectWithValue('Invalid username and password');
+      }
+
       const user = response.data.data.user;
 
       const normalizedRole = (() => {
@@ -132,10 +138,11 @@ export const loginUser = createAsyncThunk<AuthResponse, LoginCredentials>(
         },
       };
     } catch (error: any) {
+      console.error('Login error:', error);
       return rejectWithValue(
         error?.response?.data?.message ||
-        error.message ||
-        'Login failed'
+        error?.message ||
+        'Invalid username and password'
       );
     }
   }
