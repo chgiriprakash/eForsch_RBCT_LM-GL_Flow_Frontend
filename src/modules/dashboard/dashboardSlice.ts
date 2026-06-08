@@ -121,8 +121,8 @@ export const approveAdmin = createThunk("dashboard/approveGroupLeader/approve", 
 );
 
 // 🟢 Approve/Reject Lab Manager Calls
-export const rejectlabMgmt = createThunk("dashboard/labReject", (id: number) =>
-  axiosClient.get(`api/orders/labReject/${id}`).then((res) => res.data)
+export const rejectlabMgmt = createThunk("dashboard/labReject", ({ id, rejectReason }: { id: number; rejectReason: string }) =>
+  axiosClient.get(`api/orders/labReject/${id}?rejectReason=${encodeURIComponent(rejectReason)}`).then((res) => res.data)
 );
 
 export const approvelabMgmt = createThunk("dashboard/labApprove/approve", (id: number) =>
@@ -146,8 +146,20 @@ export const orderedPOD = createThunk(
 
 export const deliveredPOD = createThunk(
   "dashboard/delivered",
-  ({ id, user }: { id: number; user: { email: string; name: string; role: string; groupName: string } }) =>
-  axiosClient.get(`api/orders/delivered/${id}?page=1&size=10000&id=10&email=${user.email}&name=${user.name}&role=${user.role}`).then((res) => res.data)
+  ({ id, user, deliveryStorageLocation, orderType, barcodeInfo }: {
+    id: number;
+    user: { email: string; name: string; role: string; groupName: string };
+    orderType?: string;
+    barcodeInfo?: string;
+  }) => {
+    const params = new URLSearchParams({
+      page: "1", size: "10000", id: "10",
+      email: user.email, name: user.name, role: user.role,
+    });
+    if (orderType) params.append("orderType", orderType);
+    if (barcodeInfo) params.append("barcodeInfo", barcodeInfo);
+    return axiosClient.get(`api/orders/delivered/${id}?${params.toString()}`).then((res) => res.data);
+  }
 );
 
 // 🟢 CRUD operations for Orders

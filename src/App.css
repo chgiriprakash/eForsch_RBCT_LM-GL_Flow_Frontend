@@ -1325,6 +1325,70 @@ select:focus {
   .pd-card-full { grid-column: 1; }
 }
 
+/* ── Reject Confirmation Modal ──────────────────────────────── */
+.reject-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reject-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 28px 32px;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+
+.reject-modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+
+.reject-modal-subtitle {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 18px;
+}
+
+.reject-modal-field { margin-bottom: 20px; }
+
+.reject-modal-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 6px;
+}
+
+.reject-modal-textarea {
+  width: 100%;
+  border: 1.5px solid #c8d4e3;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  resize: vertical;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+.reject-modal-textarea:focus {
+  outline: none;
+  border-color: #005ca7;
+}
+
+.reject-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 /* ── GHS Symbol tile picker ─────────────────────────────────── */
 .checkbox-group {
   display: flex;

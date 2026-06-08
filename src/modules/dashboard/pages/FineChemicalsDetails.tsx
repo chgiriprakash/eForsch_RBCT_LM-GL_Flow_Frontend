@@ -787,6 +787,40 @@ const FineChemicalsDetails = () => {
                 </div>
               </div>
 
+              {/* Chemical Risk Assessment — full width */}
+              <div className="pd-card pd-card-full">
+                <div className="pd-card-header">
+                  <i className="fa fa-biohazard pd-card-icon" />
+                  <span>Chemical Risk Assessment</span>
+                </div>
+                <div className="pd-fields">
+                  <div className="pd-field">
+                    <span className="pd-label">Application of Hazardous Substance</span>
+                    <span className="pd-value">{getValue(product.applicationOfHazardousSubstance)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Concentration / Working Volume</span>
+                    <span className="pd-value">{getValue(product.concentrationWorkingVolume)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Lab No. Working with this Chemical</span>
+                    <span className="pd-value">{getValue(product.labNoWorkingWithChemical)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">No. of Employees Working with this Chemical</span>
+                    <span className="pd-value">{getValue(product.numberOfEmployees)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Handling Duration &gt; 15min/day?</span>
+                    <span className="pd-value">{getValue(product.handlingDurationGreater15Min)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Hazardous Due to Skin Contact?</span>
+                    <span className="pd-value">{getValue(product.hazardousDueToSkinContact)}</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Attachment — full width */}
               <div className="pd-card pd-card-full">
                 <div className="pd-card-header">

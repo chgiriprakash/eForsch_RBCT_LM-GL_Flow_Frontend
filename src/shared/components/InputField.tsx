@@ -286,6 +286,16 @@ const InputField: React.FC<InputFieldProps> = ({
             );
           })}
         </div>
+      ) : type === "textarea" ? (
+        <textarea
+          id={id}
+          value={value || ""}
+          rows={3}
+          disabled={disabled}
+          className={`input ${error ? "errorInput" : ""}`}
+          style={{ resize: "vertical" }}
+          onChange={(e) => onChange(id, e.target.value)}
+        />
       ) : type === "typeahead" ? (
         <TypeaheadField
           id={id}
