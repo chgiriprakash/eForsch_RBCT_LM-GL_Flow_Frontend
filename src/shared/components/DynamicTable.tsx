@@ -96,7 +96,9 @@ const DynamicTable = <T extends Record<string, any>>({
   }, [data, sortColumn, sortDirection]);
 
   const filteredData = sortedData.filter((row) =>
-    Object.values(row).some((value) => value?.toString().toLowerCase().includes(searchQuery))
+    Object.values(row).some((value) =>
+      value != null && value.toString().toLowerCase().includes(searchQuery)
+    )
   );
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
@@ -178,7 +180,7 @@ const DynamicTable = <T extends Record<string, any>>({
                         className={isClickable ? "dt-td-link" : "dt-td"}
                       >
                         {col.isDate ? (
-                          new Date(value).toLocaleDateString("en-GB")
+                          new Date(value).toLocaleDateString("en-GB", dateFormat)
                         ) : (() => {
                           let parsedArray: string[] = [];
                           if (Array.isArray(value)) {

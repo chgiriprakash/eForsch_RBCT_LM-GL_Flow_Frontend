@@ -104,11 +104,11 @@ const DashRoutes = () => (
         <Route path="projects-archives" element={<ProjectArchives />} />
       </Route>
 
-      {/* Administration (Admin only) */}
+      {/* Administration (Admin and Lab Management) */}
       <Route
         path="administration"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'labMgmt']}>
             <Administration />
           </ProtectedRoute>
         }

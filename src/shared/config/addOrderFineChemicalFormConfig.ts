@@ -2,6 +2,8 @@ const addOrderFineChemicalFormConfig = (
   budgetOptions: string[],
   companyOptions: { label: string; key: string }[] = [],
   storageLocationOptions: string[] = [],
+  hPhraseOptions: { label: string; key: string }[] = [],
+  pPhraseOptions: { label: string; key: string }[] = [],
 ) => [
     {
         id: "productname",
@@ -51,7 +53,7 @@ const addOrderFineChemicalFormConfig = (
     //},
     {
         id: "weightvolsubqty",
-        label: "packaging unit",
+        label: "Weight / Vol / Sub QTY",
         type: "text",
         validation: { required: true },
     },
@@ -138,14 +140,16 @@ const addOrderFineChemicalFormConfig = (
     },
     {
         id: "hPhrases",
-        label: "H-Phrases (e.g. +H332)",
-        type: "text",
+        label: "H-Phrases",
+        type: hPhraseOptions.length > 0 ? "select" : "text",
+        options: hPhraseOptions,
         validation: { required: true },
     },
     {
         id: "pPhrases",
-        label: "P-Phrases (e.g. +P332)",
-        type: "text",
+        label: "P-Phrases",
+        type: pPhraseOptions.length > 0 ? "select" : "text",
+        options: pPhraseOptions,
         validation: { required: true },
     },
     {
@@ -229,8 +233,9 @@ const addOrderFineChemicalFormConfig = (
     },
     {
         id: "attachment",
-        label: "Attachment",
+        label: "Please upload SDS in DE and/or EN here",
         type: "file",
+        helpText: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year”",
         validation: { required: false },
     },
     // {

@@ -269,7 +269,7 @@ const updateProductFormConfig = (
   },
   {
     id: "attachment",
-    label: "Attachment",
+    label: "Please upload SDS in DE and/or EN here",
     type: "file",
     validation: { required: false },
   },

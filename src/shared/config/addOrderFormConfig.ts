@@ -53,7 +53,7 @@ const addOrderFormConfig = (
   },
   {
     id: "weightvolsubqty",
-    label: "W/V/Sub Qty",
+    label: "Weight / Vol / Sub QTY",
     type: "text",
     validation: { required: true },
   },
@@ -133,8 +133,9 @@ const addOrderFormConfig = (
 //   },
     {
       id: "attachment",
-      label: "Attachment",
+      label: "Please upload SDS in DE and/or EN here",
       type: "file",
+      helpText: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year”",
       validation: { required: false },
   },
 ];

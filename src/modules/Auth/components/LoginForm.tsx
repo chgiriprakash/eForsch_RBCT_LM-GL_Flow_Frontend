@@ -61,8 +61,8 @@ const handleSubmit = async (e: React.FormEvent) => {
     console.log("LOGIN RESPONSE:", result);
     console.log("Login result structure:", { result, resultData: result?.data });
 
-    // Extract user from response - handle both possible response structures
-    const user = result?.data?.user || result?.user;
+    // Extract user from response
+    const user = result?.data?.user;
 
     if (!user) {
       throw new Error("Invalid response structure: user data not found");
