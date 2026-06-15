@@ -45,12 +45,12 @@ const addOrderFineChemicalFormConfig = (
         type: "text",
         validation: { required: false },
     },
-    //{
-    //    id: "sapMaterialNo",
-    //    label: "SAP Material No",
-    //    type: "text", // changed to text to accept alphanumeric
-    //    validation: { required: true },
-    //},
+    {
+        id: "sapMaterialNo",
+        label: "SAP Material No",
+        type: "text", // changed to text to accept alphanumeric
+        validation: { required: false },
+    },
     {
         id: "weightvolsubqty",
         label: "Weight / Vol / Sub QTY",
@@ -80,7 +80,7 @@ const addOrderFineChemicalFormConfig = (
         id: "concentration",
         label: "Concentration",
         type: "text",
-        validation: { required: true },
+        validation: { required: false },
     },
     {
         id: "price",
@@ -233,9 +233,9 @@ const addOrderFineChemicalFormConfig = (
     },
     {
         id: "attachment",
-        label: "Please upload SDS in DE and/or EN here",
+        label: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year”",
         type: "file",
-        helpText: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year”",
+       // helpText: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year”",
         validation: { required: false },
     },
     // {
