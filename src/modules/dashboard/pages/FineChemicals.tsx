@@ -10,6 +10,7 @@ import {
   getStorageLocations,
   deleteInventoryArchieves,
   downloadPDFFineChecm,
+  downloadPDF,
   uploadFineChemical,
   getHPhrases,
   getPPhrases,
@@ -166,7 +167,7 @@ const FineChemicals = () => {
         { key: "companyname",  label: "Company",             sortable: true,  hidden: false },
         { key: "catalogue",    label: "Article Number",      sortable: true,  hidden: false },
         { key: "quantity",     label: "Quantity",            sortable: true,  hidden: false },
-        { key: "wvsubqty",     label: "Weight / Vol / Sub QTY",sortable: false, hidden: false },
+        { key: "wvsubqty",     label: "Qty / Packaging Unit",sortable: false, hidden: false },
         { key: "price",        label: "Price",               sortable: true,  hidden: false },
         { key: "budgetno",     label: "Budget Number",       sortable: true,  hidden: false },
         { key: "orderedby",    label: "Ordered By",          sortable: false, hidden: false },
@@ -189,7 +190,7 @@ const FineChemicals = () => {
           { key: "companyname",  label: "Company",              sortable: true,  hidden: false },
           { key: "catalogue",    label: "Article Number",       sortable: true,  hidden: false },
           { key: "quantity",     label: "Quantity",             sortable: true,  hidden: false },
-          { key: "wvsubqty",     label: "Weight / Vol / Sub QTY", sortable: false, hidden: false },
+          { key: "wvsubqty",     label: "Qty / Packaging Unit", sortable: false, hidden: false },
           { key: "price",        label: "Price",                sortable: true,  hidden: false },
           { key: "budgetno",     label: "Budget Number",        sortable: true,  hidden: false },
           { key: "orderedby",    label: "Ordered By",           sortable: false, hidden: false },
@@ -279,6 +280,19 @@ const FineChemicals = () => {
     fetchPPhrases();
     console.log("Product Data:", data);
   }, [dispatch]);
+
+const addAttachment = async (row: any) => {
+  const fileUrl =  await dispatch(downloadPDF(row.productid)).unwrap();
+  console.log("File URL:", fileUrl);
+
+  // Open file in a new tab
+  window.open(fileUrl, "_blank");
+
+  alert(`File downloaded successfully!`);
+    
+  fetchData();
+
+};
 
 const openProductDetails = (row: any) => {
   const cleanedRow: any = {};

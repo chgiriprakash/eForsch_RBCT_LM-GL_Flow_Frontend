@@ -84,12 +84,6 @@ const FineChemicalsDetails = () => {
       substitutioncheck: "substitutionCheck",
       substitutionoption: "substitutionOption",
       storagelocation: "storageLocation",
-      applicationofhazardoussubstance: "applicationOfHazardousSubstance",
-      concentrationworkingvolume: "concentrationWorkingVolume",
-      labnoworkingwithchemical: "labNoWorkingWithChemical",
-      numberofemployees: "numberOfEmployees",
-      handlingdurationgreater15min: "handlingDurationGreater15Min",
-      hazardousduetoskincontact: "hazardousDueToSkinContact",
       groupname: "groupName",
       filename: "filename",
       filetype: "filetype",
@@ -157,6 +151,8 @@ const FineChemicalsDetails = () => {
     createdBy: userRole?.name || "",
     updatedBy: userRole?.name || "",
     role: userRole?.role || "",
+    orderType: product.orderType || "",
+    barcodeInfo: product.barcodeInfo || "",
   });
 
   function mapToModifyApiPayload(product: any): any {
@@ -199,12 +195,6 @@ const FineChemicalsDetails = () => {
       substitutionCheck: product.substitutionCheck || "",
       substitutionOption: product.substitutionOption || "",
       storageLocation: product.storageLocation || "",
-      applicationOfHazardousSubstance: product.applicationOfHazardousSubstance || "",
-      concentrationWorkingVolume: product.concentrationWorkingVolume || "",
-      labNoWorkingWithChemical: product.labNoWorkingWithChemical || "",
-      numberOfEmployees: product.numberOfEmployees || "",
-      handlingDurationGreater15Min: product.handlingDurationGreater15Min || "",
-      hazardousDueToSkinContact: product.hazardousDueToSkinContact || "",
       priority: product.priority || "Normal",
       received: product.received || "Pending",
       catalogue: product.catalogue || "",
@@ -561,10 +551,8 @@ const FineChemicalsDetails = () => {
       }
 
       const updated = await dispatch(editFineChemicals(cleanPayload)).unwrap();
-      // Use the response directly — avoids a second round-trip and any race condition
-      const normalizedFromResponse = normalizeKeysToFormIds(updated.data);
-      setProduct(normalizedFromResponse);
-      setupdateProd(mapToModifyApiPayload(normalizedFromResponse));
+      setProduct(normalizeKeysToFormIds(updated.data));
+      fetchData();
       setIsProductModalOpen(false);
       alert("Product updated successfully!");
     } catch (error) {
@@ -681,7 +669,7 @@ const FineChemicalsDetails = () => {
                     <span className="pd-value pd-badge">{getValue(product.quantity)}</span>
                   </div>
                   <div className="pd-field">
-                    <span className="pd-label">Weight / Vol / Sub QTY</span>
+                    <span className="pd-label">Weight / Vol Sub QTY</span>
                     <span className="pd-value">{getValue(product.wvsubqty)}</span>
                   </div>
                   <div className="pd-field">
@@ -692,6 +680,18 @@ const FineChemicalsDetails = () => {
                     <span className="pd-label">SAP Material No</span>
                     <span className="pd-value">{getValue(product.sapMaterialNo)}</span>
                   </div>
+                  {product.orderType && (
+                    <div className="pd-field">
+                      <span className="pd-label">Order Type</span>
+                      <span className="pd-value pd-badge">{product.orderType}</span>
+                    </div>
+                  )}
+                  {product.barcodeInfo && (
+                    <div className="pd-field">
+                      <span className="pd-label">Barcode Info</span>
+                      <span className="pd-value">{product.barcodeInfo}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

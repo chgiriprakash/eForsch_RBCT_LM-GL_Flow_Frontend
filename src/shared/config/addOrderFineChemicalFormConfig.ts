@@ -2,8 +2,6 @@ const addOrderFineChemicalFormConfig = (
   budgetOptions: string[],
   companyOptions: { label: string; key: string }[] = [],
   storageLocationOptions: string[] = [],
-  hPhraseOptions: { label: string; key: string }[] = [],
-  pPhraseOptions: { label: string; key: string }[] = [],
 ) => [
     {
         id: "productname",
@@ -53,7 +51,7 @@ const addOrderFineChemicalFormConfig = (
     //},
     {
         id: "weightvolsubqty",
-        label: "Weight / Vol / Sub QTY",
+        label: "packaging unit",
         type: "text",
         validation: { required: true },
     },
@@ -140,16 +138,14 @@ const addOrderFineChemicalFormConfig = (
     },
     {
         id: "hPhrases",
-        label: "H-Phrases",
-        type: hPhraseOptions.length > 0 ? "select" : "text",
-        options: hPhraseOptions,
+        label: "H-Phrases (e.g. +H332)",
+        type: "text",
         validation: { required: true },
     },
     {
         id: "pPhrases",
-        label: "P-Phrases",
-        type: pPhraseOptions.length > 0 ? "select" : "text",
-        options: pPhraseOptions,
+        label: "P-Phrases (e.g. +P332)",
+        type: "text",
         validation: { required: true },
     },
     {
@@ -233,9 +229,8 @@ const addOrderFineChemicalFormConfig = (
     },
     {
         id: "attachment",
-        label: "Please upload SDS in DE and/or EN here",
+        label: "Attachment",
         type: "file",
-        helpText: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year”",
         validation: { required: false },
     },
     // {
@@ -268,6 +263,20 @@ const addOrderFineChemicalFormConfig = (
     //     type: "text",
     //     validation: { required: true },
     // }
+    {
+      id: "orderType",
+      label: "Order Type (Bulk / Non-Bulk)",
+      type: "radio",
+      options: ["bulk", "nonbulk"],
+      validation: { required: false },
+    },
+    {
+      id: "barcodeInfo",
+      label: "Barcode Info",
+      type: "text",
+      validation: { required: false },
+      showIf: { field: "orderType", value: "nonbulk" },
+    },
 ];
 
 export default addOrderFineChemicalFormConfig;

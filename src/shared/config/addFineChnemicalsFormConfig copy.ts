@@ -53,7 +53,7 @@ const addFineChemicalsFormConfig = (
   },
   {
     id: "wvsubqty",
-    label: "Weight / Vol / Sub QTY",
+    label: "Quantity Unit",
     type: "text",
     validation: { required: true },
   },
@@ -227,7 +227,7 @@ const addFineChemicalsFormConfig = (
   },
   {
       id: "attachment",
-      label: "Please upload SDS in DE and/or EN here",
+      label: "Attachment",
       type: "file",
       validation: { required: false },
   },

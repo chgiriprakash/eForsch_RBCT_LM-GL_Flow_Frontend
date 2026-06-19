@@ -15,8 +15,7 @@ import {  addOrder,
   shareProduct,
   getProfile,
   getCompanies,
-  downloadPDFInv,
-  uploadInventoryFile, } from "../dashboardSlice";
+  downloadPDFInv, } from "../dashboardSlice";
 import addOrderProdFormConfig from "../../../shared/config/addOrderProdFormConfig";
 import updateProductFormGenInvConfig from "../../../shared/config/updateProductFormGenInvConfig.";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
@@ -90,7 +89,10 @@ const [shareInitialValues] =
     orderdate: product.orderdate || "",
     expirydate: product.expirydate || "",
     addedby: product.addedby || userRole.name,
-    orderedby: userRole?.name || "",
+    // shared: product.shared ?? false,
+    // fileName: product.fileName || null,
+    // fileType: product.fileType || null,
+    // fileContent: product.fileContent || null,
 
     // ✅ Extra order-related fields
     price: product.price || 0,
@@ -464,7 +466,6 @@ const handleShareSubmit = async (
     formData.groupName = userRole.groupName; // ✅ User’s group
     formData.role = userRole.role;
 
-    // ReusableForm stores files as File[] — extract the first element
     const rawAttachment = formData.attachment;
     const fileObj: File | null = Array.isArray(rawAttachment) && rawAttachment.length > 0
       ? rawAttachment[0]
@@ -476,7 +477,7 @@ const handleShareSubmit = async (
 
       const payload = new FormData();
 
-      payload.append("order", JSON.stringify(orderData));
+      payload.append("order", JSON.stringify(orderData));  
 
       console.log("🚀 Final payload to addOrder:", payload);
 
@@ -503,29 +504,31 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
     formData.addedby = userRole.name;
     formData.groupName = userRole.groupName;
 
-    // ReusableForm stores files as File[] — extract the first element
-    const rawAttachment = formData.attachment;
-    const attachmentFile: File | null =
-      Array.isArray(rawAttachment) && rawAttachment.length > 0 ? rawAttachment[0] :
-      rawAttachment instanceof File ? rawAttachment : null;
-
-    delete formData.attachment;
-
-    // ✅ Update product metadata (JSON — no file)
+    // ✅ Convert and normalize payload
     const finalPayload = mapToModifyApiPayload(formData);
-    await dispatch(editProduct(finalPayload)).unwrap();
 
-    // ✅ Upload file separately via the dedicated endpoint if provided
-    if (attachmentFile) {
-      const fileFormData = new FormData();
-      fileFormData.append("file", attachmentFile, attachmentFile.name);
-      await dispatch(uploadInventoryFile({
-        id: product?.productId ?? Number(id),
-        formData: fileFormData,
-      })).unwrap();
+    // ✅ Convert File to base64 if attachment exists
+    if (formData.attachment instanceof File) {
+      const file = formData.attachment;
+      const base64String = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      finalPayload.fileContent = [base64String];
+      finalPayload.fileName = file.name;
+      finalPayload.fileType = file.type;
     }
 
-    fetchData();
+    console.log("🚀 Final payload to editProduct:", finalPayload);
+
+    // ✅ Dispatch API call
+    const updated = await dispatch(editProduct(finalPayload)).unwrap();
+
+    // ✅ Update UI
+    setProduct(mapProductToOrder(updated.data, userRole));
+    fetchData(); // Refresh data
     setIsProductModalOpen(false);
     alert("Product updated successfully!");
   } catch (error) {
@@ -645,7 +648,7 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
                     <span className="pd-value pd-badge">{getValue(product.quantity)}</span>
                   </div>
                   <div className="pd-field">
-                    <span className="pd-label">Weight / Vol / Sub QTY</span>
+                    <span className="pd-label">Weight / Vol Sub QTY</span>
                     <span className="pd-value">{getValue(product.weightvolsubqty)}</span>
                   </div>
                   <div className="pd-field">
@@ -656,6 +659,18 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
                     <span className="pd-label">SAP Material No</span>
                     <span className="pd-value">{getValue(product.sapmaterialno)}</span>
                   </div>
+                  {product.orderType && (
+                    <div className="pd-field">
+                      <span className="pd-label">Order Type</span>
+                      <span className="pd-value pd-badge">{product.orderType}</span>
+                    </div>
+                  )}
+                  {product.barcodeInfo && (
+                    <div className="pd-field">
+                      <span className="pd-label">Barcode Info</span>
+                      <span className="pd-value">{product.barcodeInfo}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

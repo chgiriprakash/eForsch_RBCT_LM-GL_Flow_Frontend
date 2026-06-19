@@ -129,10 +129,10 @@ const GeneralInventory = () => {
         { key: "companyname",      label: "Company",                  sortable: true,  hidden: false },
         { key: "catalogue",        label: "Article Number",            sortable: true,  hidden: false },
         { key: "quantity",         label: "Quantity",                  sortable: true,  hidden: false },
-        { key: "weightvolsubqty",  label: "Weight / Vol / Sub QTY",      sortable: false, hidden: false },
+        { key: "weightvolsubqty",  label: "Qty / Packaging Unit",      sortable: false, hidden: false },
         { key: "price",            label: "Price",                     sortable: true,  hidden: false },
         { key: "budgetno",         label: "Budget Number",             sortable: true,  hidden: false },
-        { key: "addedby",          label: "Ordered By",                sortable: false, hidden: false },
+        { key: "orderedby",        label: "Ordered By",                sortable: false, hidden: false },
         { key: "action",           label: "Action",                    sortable: false, hidden: false },
       ];
 
@@ -154,10 +154,10 @@ const GeneralInventory = () => {
           { key: "companyname",     label: "Company",             sortable: true,  hidden: false },
           { key: "catalogue",       label: "Article Number",      sortable: true,  hidden: false },
           { key: "quantity",        label: "Quantity",            sortable: true,  hidden: false },
-          { key: "weightvolsubqty", label: "Weight / Vol / Sub QTY",sortable: false, hidden: false },
+          { key: "weightvolsubqty", label: "Qty / Packaging Unit",sortable: false, hidden: false },
           { key: "price",           label: "Price",               sortable: true,  hidden: false },
           { key: "budgetno",        label: "Budget Number",       sortable: true,  hidden: false },
-          { key: "addedby",         label: "Ordered By",          sortable: false, hidden: false },
+          { key: "orderedby",       label: "Ordered By",          sortable: false, hidden: false },
         ],
         pagination: defaultPagination,
       });
@@ -334,11 +334,8 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
       formValues.role = userRole.role;
     }
 
-    // ReusableForm stores files as File[] — extract the first element
-    const rawAttachment = formValues.attachment;
-    const file: File | null = Array.isArray(rawAttachment) && rawAttachment.length > 0
-      ? rawAttachment[0]
-      : rawAttachment instanceof File ? rawAttachment : null;
+    // ✅ Extract file
+    const file = formValues.attachment || null;
 
     // ✅ Remove from object
     delete formValues.attachment;
@@ -350,7 +347,7 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
     payload.append("inventory", JSON.stringify(formValues));
 
     if (file) {
-      payload.append("file", file, file.name);
+      payload.append("file", file); // name MUST match API
     }
 
     console.log("🚀 Final Payload:");

@@ -13,7 +13,6 @@ type FormField = {
   multiple?: boolean;
   accept?: string;
   maxFiles?: number;
-  helpText?: string;
 
   validation?: {
     required?: boolean;
@@ -138,15 +137,6 @@ const ReusableForm: React.FC<FormProps> = ({
                   {formData[field.id]?.length || 0} /{" "}
                   {field.maxFiles || 5})
                 </label>
-
-                {field.helpText && (
-                  <div
-                    className="fw-bold mb-2"
-                    style={{ color: "#0d6efd" }}
-                  >
-                    {field.helpText}
-                  </div>
-                )}
 
                 <input
                   key={formData[field.id]?.length} // ✅ reset input

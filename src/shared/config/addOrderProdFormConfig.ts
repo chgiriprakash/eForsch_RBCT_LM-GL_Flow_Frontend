@@ -54,7 +54,7 @@ const addOrderProdFormConfig = (
   },
   {
     id: "weightvolsubqty",
-    label: "Weight / Vol / Sub QTY",
+    label: "W/V/Sub Qty",
     type: "text",
     validation: { required: true },
   },
@@ -134,7 +134,7 @@ const addOrderProdFormConfig = (
 //   },
     {
       id: "attachment",
-      label: "Please upload SDS in DE and/or EN here",
+      label: "Attachment",
       type: "file",
       validation: { required: false },
   },
