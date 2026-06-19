@@ -108,7 +108,7 @@ const DashRoutes = () => (
       <Route
         path="administration"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'labmgmt']}>
             <Administration />
           </ProtectedRoute>
         }
