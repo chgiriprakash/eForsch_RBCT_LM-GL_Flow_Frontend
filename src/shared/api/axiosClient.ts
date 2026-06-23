@@ -18,7 +18,7 @@ axiosClient.interceptors.request.use(
     // Let the browser set Content-Type automatically for FormData
     // (it must include the multipart boundary, which only the browser knows)
     if (config.data instanceof FormData) {
-      config.headers.delete("Content-Type");
+      delete (config.headers as any)["Content-Type"];
     }
 
     return config;

@@ -49,6 +49,7 @@ const ReusableForm: React.FC<FormProps> = ({
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [removedFiles, setRemovedFiles] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setFormData(initialValues);
@@ -119,7 +120,7 @@ const ReusableForm: React.FC<FormProps> = ({
       return;
     }
 
-    await onSubmit(formData);
+    await onSubmit({ ...formData, _removedFiles: removedFiles });
   };
 
   return (
@@ -175,10 +176,21 @@ const ReusableForm: React.FC<FormProps> = ({
                 />
 
                 {/* ✅ EXISTING SERVER FILE */}
-                {existingFileNames[field.id] && !formData[field.id]?.length && (
+                {existingFileNames[field.id] && !formData[field.id]?.length && !removedFiles[field.id] && (
                   <div className="mt-2 d-flex align-items-center gap-2">
                     <span className="text-muted" style={{ fontSize: "0.85rem" }}>Current file:</span>
                     <span className="text-primary fw-semibold" style={{ fontSize: "0.85rem" }}>{existingFileNames[field.id]}</span>
+                    {!disabled && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        style={{ fontSize: "0.75rem", padding: "1px 6px" }}
+                        onClick={() => setRemovedFiles(prev => ({ ...prev, [field.id]: true }))}
+                        title="Remove current file"
+                      >
+                        ✕ Remove
+                      </button>
+                    )}
                   </div>
                 )}
 

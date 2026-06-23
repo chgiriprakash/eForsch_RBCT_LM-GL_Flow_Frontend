@@ -197,6 +197,7 @@ const Orders = () => {
   const [isModalFCOpen, setIsModalFCOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [existingAttachmentName, setExistingAttachmentName] = useState<string | null>(null);
+  const [isOrderLocked, setIsOrderLocked] = useState(false);
   const [data, setData] = useState<OrderData | null>(null);
   const [origalData, setOrigalData] = useState<OrderData | null>(null);
   console.log("Orders - origalData state:", origalData);
@@ -592,6 +593,7 @@ const enhanceList = (list: Order[], userRole: any) => {
 
     return {
       ...item,
+      _labApprovedRaw: item.labApproved === true, // preserve raw boolean before icon overwrite
       fileName: item.fileName ? item.fileName : <i className="fa fa-paperclip"></i>,
       // Fall back to creator for older orders saved without orderedby
       orderedby: item.orderedby || item.createdBy || item.addedby || "",
@@ -634,8 +636,19 @@ const enhanceList = (list: Order[], userRole: any) => {
       const rawOrder = origalData?.list.find((o: any) => o.orderId === row.orderId) || row;
       setViewOrderModal({ open: true, order: rawOrder });
     } else {
+      // Use raw unenhanced data to get the filename (enhanceList overwrites some fields with JSX)
+      const rawRow = origalData?.list?.find((o: any) => o.orderId === row.orderId) || row;
+      console.log("🔍 openOrderDetails rawRow:", rawRow);
+      console.log("🔍 safetydatasheet:", rawRow.safetydatasheet, "| attachment:", rawRow.attachment, "| fileName:", rawRow.fileName);
+      const existingFile =
+        (typeof rawRow.safetydatasheet === "string" && rawRow.safetydatasheet) ? rawRow.safetydatasheet :
+        (typeof rawRow.attachment === "string" && rawRow.attachment) ? rawRow.attachment :
+        (typeof rawRow.fileName === "string" && rawRow.fileName) ? rawRow.fileName :
+        null;
+      console.log("🔍 existingFile resolved:", existingFile);
       setSelectedOrder(mapFormDataToOrder(row, userRole));
-      setExistingAttachmentName(typeof row.safetydatasheet === "string" && row.safetydatasheet ? row.safetydatasheet : null);
+      setExistingAttachmentName(existingFile);
+      setIsOrderLocked(row._labApprovedRaw === true);
       setIsModalOpen(true);
     }
   };
@@ -764,7 +777,7 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
     budgetno: formData.budgetno,
     price: formData.price || 0,
     // Removed 'role' property as it does not exist in 'Order' type
-    safetydatasheet: null,
+    safetydatasheet: formData.safetydatasheet || null,
     expiryDate:
       formatToISOWithOffset(formData.expiryDate) ||
       formatToISOWithOffset(formData.expirydate),
@@ -814,30 +827,42 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
   // 🟢 Edit Order (Submit Form)
   const handleOrderSubmit = async (formData: Record<string, any>) => {
     try {
-      console.log("Before Mapping FormData:", formData);
-
-      // 🟢 Remove the "request" key & map formData to match order structure
       const { request, ...rawFormData } = formData;
 
-      // 🟢 Normalize inventoryType if it’s a React element
+      // Normalize inventoryType React element → string
       if (rawFormData.inventoryType && typeof rawFormData.inventoryType !== "string") {
         const className = rawFormData.inventoryType?.props?.className;
-
-        if (className === "fa fa-flask text-primary") {
-          rawFormData.inventoryType = "generalInventory";
-        } else if (className === "fa fa-flask text-warning") {
-          rawFormData.inventoryType = "fineChemicalInventory";
-        } else {
-          rawFormData.inventoryType = "generalInventory"; // fallback
-        }
+        if (className === "fa fa-flask text-primary") rawFormData.inventoryType = "generalInventory";
+        else if (className === "fa fa-flask text-warning") rawFormData.inventoryType = "fineChemicalInventory";
+        else rawFormData.inventoryType = "generalInventory";
       }
 
-      const mappedFormData = mapFormDataToOrder(rawFormData, userRole);
-      if (userRole.role === "podept" || userRole.role === 'purchase department' || userRole.role === 'labMgmt') {
-        mappedFormData.groupName= formData.groupName;
+      // Extract new file if user selected one (ReusableForm stores File[])
+      const rawAttachment = rawFormData.attachment;
+      const newFile: File | null =
+        Array.isArray(rawAttachment) && rawAttachment.length > 0 ? rawAttachment[0] :
+        rawAttachment instanceof File ? rawAttachment : null;
+      delete rawFormData.attachment;
+
+      const mappedFormData: any = mapFormDataToOrder(rawFormData, userRole);
+      if (userRole.role === "podept" || userRole.role === "purchase department" || userRole.role === "labMgmt") {
+        mappedFormData.groupName = formData.groupName;
       }
-console.log("selectedOrder:", selectedOrder);
-      console.log("Updating Order with Mapped Data:", mappedFormData);
+
+      // If a new file was selected, convert to base64 and include in JSON payload
+      // Otherwise preserve the existing filename (stored in existingAttachmentName state)
+      if (newFile) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(newFile);
+        });
+        mappedFormData.safetydatasheet = newFile.name;
+        mappedFormData.fileContent = base64;
+      } else if (existingAttachmentName) {
+        mappedFormData.safetydatasheet = existingAttachmentName;
+      }
 
       if (mappedFormData.inventoryType === "fineChemicalInventory") {
         await dispatch(editFineChemicalOrder(mappedFormData as Order)).unwrap();
@@ -847,9 +872,10 @@ console.log("selectedOrder:", selectedOrder);
 
       alert("Order updated successfully!");
       setIsModalOpen(false);
+      setExistingAttachmentName(null);
 
-      if (userRole.role === "podept" || userRole.role === 'purchase department') {
-        fetchPodeptData(); // Fetch orders only if the user is from PO Dept
+      if (userRole.role === "podept" || userRole.role === "purchase department") {
+        fetchPodeptData();
       } else {
         fetchData();
       }
@@ -999,9 +1025,27 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); setExistingAttachmentName(null); }}
-        title={`Update ${isFineChemical(selectedOrder) ? "Fine Chemical" : "General Inventory"} Order`}
+        onClose={() => { setIsModalOpen(false); setExistingAttachmentName(null); setIsOrderLocked(false); }}
+        title={`${isOrderLocked ? "View" : "Update"} ${isFineChemical(selectedOrder) ? "Fine Chemical" : "General Inventory"} Order`}
       >
+        {isOrderLocked && (
+          <div style={{
+            background: "#fff3cd",
+            border: "1px solid #ffc107",
+            borderRadius: "6px",
+            padding: "10px 14px",
+            marginBottom: "16px",
+            color: "#856404",
+            fontWeight: 500,
+            fontSize: "0.9rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}>
+            <i className="fa fa-lock" />
+            This order has been approved by Lab Management. You cannot make any changes.
+          </div>
+        )}
         <ReusableForm
           formConfig={
             isFineChemical(selectedOrder)
@@ -1012,6 +1056,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
           onSubmit={handleOrderSubmit}
           onFieldChange={handleCompanyFieldChange}
           existingFileNames={existingAttachmentName ? { attachment: existingAttachmentName } : {}}
+          disabled={isOrderLocked}
         />
       </Modal>
 

@@ -141,14 +141,14 @@ const addFineChemicalsFormConfig = (
   {
     id: "hPhrases",
     label: "H-Phrases",
-    type: "select",
+    type: "typeahead",
     options: hPhraseOptions,
     validation: { required: true },
   },
   {
     id: "pPhrases",
     label: "P-Phrases",
-    type: "select",
+    type: "typeahead",
     options: pPhraseOptions,
     validation: { required: true },
   },

@@ -538,6 +538,8 @@ const FineChemicalsDetails = () => {
 
   const handleUpdateSubmit = async (formData: any) => {
     try {
+      const removedFiles: Record<string, boolean> = formData._removedFiles || {};
+
       // ReusableForm stores files as File[] array — extract first file
       const attachmentFile: File | null =
         formData.attachment instanceof File ? formData.attachment :
@@ -552,11 +554,16 @@ const FineChemicalsDetails = () => {
         hazardousSubstance: rawPayload.hazardousSubstance === "Yes" ? true : rawPayload.hazardousSubstance === "No" ? false : rawPayload.hazardousSubstance,
         cmrSubstance:       rawPayload.cmrSubstance       === "Yes" ? true : rawPayload.cmrSubstance       === "No" ? false : rawPayload.cmrSubstance,
         skinResorptive:     rawPayload.skinResorptive     === "Yes" ? true : rawPayload.skinResorptive     === "No" ? false : rawPayload.skinResorptive,
-        fileContent: null,  // will be set below if file exists
+        fileContent: null,
       };
 
-      // If file selected — convert to Base64 and include in JSON payload
-      if (attachmentFile) {
+      if (removedFiles["attachment"]) {
+        // User clicked ✕ Remove — clear file fields on backend
+        cleanPayload.fileName    = null;
+        cleanPayload.fileType    = null;
+        cleanPayload.fileContent = null;
+      } else if (attachmentFile) {
+        // New file selected — convert to Base64
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload  = () => resolve((reader.result as string).split(",")[1]);
@@ -565,8 +572,9 @@ const FineChemicalsDetails = () => {
         });
         cleanPayload.fileName    = attachmentFile.name;
         cleanPayload.fileType    = attachmentFile.type;
-        cleanPayload.fileContent = base64;   // backend setFileContent(Object) decodes Base64 → byte[]
+        cleanPayload.fileContent = base64;
       }
+      // else: no change to attachment — backend keeps existing file
 
       const updated = await dispatch(editFineChemicals(cleanPayload)).unwrap();
       // Use the response directly — avoids a second round-trip and any race condition
@@ -873,19 +881,20 @@ const FineChemicalsDetails = () => {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Fine Chemical Product Order">
         <ReusableForm
-          formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions, storageLocationOptions)}
+          formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions, storageLocationOptions, hPhraseOptions, pPhraseOptions)}
           initialValues={order || {}}
           onSubmit={handleOrderSubmit}
           onFieldChange={handleCompanyFieldChange}
         />
       </Modal>
 
-      <Modal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} title="Update Fine Chemical Product">
+      <Modal isOpen={isProductModalOpen} onClose={() => { setIsProductModalOpen(false); }} title="Update Fine Chemical Product">
         <ReusableForm
           formConfig={updateProductFormConfig(budget || [], companyOptions, storageLocationOptions, hPhraseOptions, pPhraseOptions)}
           initialValues={updateProd || {}}
           onSubmit={handleUpdateSubmit}
           onFieldChange={handleCompanyFieldChange}
+          existingFileNames={product?.filename ? { attachment: product.filename } : product?.fileName ? { attachment: product.fileName } : {}}
         />
       </Modal>
 
