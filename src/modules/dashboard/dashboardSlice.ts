@@ -200,11 +200,7 @@ export const getPPhrases = createAsyncThunk<any, void>(
 
 // 🟢 CRUD operations for Orders
 export const addOrder = createThunk("dashboard/addOrder", (formData: FormData) =>
-  axiosClient.post("api/orders/addOrder", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  }).then((res) => res.data)
+  axiosClient.post("api/orders/addOrder", formData).then((res) => res.data)
 );
 
 export const editOrder = createThunk("dashboard/editOrder", (order: any) =>
@@ -216,11 +212,7 @@ export const deleteOrder = createThunk("dashboard/deleteOrder", (id: number) =>
 );
 
 export const addFineChemicalOrder = createThunk("dashboard/addOrderFineChemical", (formData: FormData) =>
-  axiosClient.post("api/orders/addOrderFineChemical", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  }).then((res) => res.data)
+  axiosClient.post("api/orders/addOrderFineChemical", formData).then((res) => res.data)
 );
 
 export const editFineChemicalOrder = createThunk("dashboard/modifyOrder", (order: any) =>
@@ -283,12 +275,7 @@ export const fetchFineChemicals = createThunk("dashboard/finechemical/getFineChe
 export const addFineChemicals = createThunk("dashboard/finechemical/addFineChemical", (product: any) =>
   // axiosClient.post("/api/finechemical/addFineChemical", product).then((res) => res.data)
   axiosClient
-    .post("/api/finechemical/addFineChemical", product, {
-      headers: {
-         "Content-Type": "multipart/form-data", // ✅ required
-          Accept: "*/*",
-      },
-    })
+    .post("/api/finechemical/addFineChemical", product)
     .then((res) => res.data)
 );
 

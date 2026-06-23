@@ -382,18 +382,19 @@ const openProductDetails = (row: any) => {
 
     console.log("Submitting Form (raw):", formData);
 
-    // ✅ Extract file object (if present)
-    const fileObj = formData.attachment || null;
+    // ✅ Extract file object (if present) — ReusableForm stores files as File[]
+    const rawAttachment = formData.attachment;
+    const fileObj: File | null =
+      Array.isArray(rawAttachment) && rawAttachment.length > 0 ? rawAttachment[0] :
+      rawAttachment instanceof File ? rawAttachment : null;
     delete formData.attachment;
 
     // ✅ Build FormData for multipart request
     const payload = new FormData();
-
-    // backend expects `finechemical`, not `finechemical`
-    payload.append("finechemical", JSON.stringify(formData));  
+    payload.append("finechemical", JSON.stringify(formData));
 
     if (fileObj) {
-      payload.append("file", fileObj, fileObj.name); // attach file if present
+      payload.append("file", fileObj, fileObj.name);
     }
 
     try {

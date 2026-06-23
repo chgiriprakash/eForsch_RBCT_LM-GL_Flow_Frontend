@@ -509,20 +509,28 @@ const FineChemicalsDetails = () => {
       formData.role = userRole.role;
 
       try {
+        const rawAttachment = formData.attachment;
+        const fileObj: File | null =
+          Array.isArray(rawAttachment) && rawAttachment.length > 0 ? rawAttachment[0] :
+          rawAttachment instanceof File ? rawAttachment : null;
+        delete formData.attachment;
+
         const orderData = mapFineProductToOrder(formData, userRole);
         const payload = new FormData();
         payload.append("order", JSON.stringify(orderData));
 
-        if (formData.attachment) {
-          payload.append("file", formData.attachment, formData.attachment.name);
+        if (fileObj) {
+          payload.append("file", fileObj, fileObj.name);
         }
 
         await dispatch(addFineChemicalOrder(payload)).unwrap();
         alert("Order placed successfully!");
         setIsModalOpen(false);
         navigate(`/orders`);
-      } catch (error) {
-        alert("Failed to place order.");
+      } catch (error: any) {
+        const msg = error?.response?.data?.message || error?.message || String(error);
+        console.error("Fine chemical order failed:", msg, error);
+        alert("Failed to place order: " + msg);
       }
     },
     [product, userRole, dispatch, navigate]

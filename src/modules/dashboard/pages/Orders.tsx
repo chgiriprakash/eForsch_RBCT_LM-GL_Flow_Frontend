@@ -196,6 +196,7 @@ const Orders = () => {
   const [isModalGIOpen, setIsModalGIOpen] = useState(false);
   const [isModalFCOpen, setIsModalFCOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [existingAttachmentName, setExistingAttachmentName] = useState<string | null>(null);
   const [data, setData] = useState<OrderData | null>(null);
   const [origalData, setOrigalData] = useState<OrderData | null>(null);
   console.log("Orders - origalData state:", origalData);
@@ -405,11 +406,11 @@ const normalizeKeysAndCleanData = (data: any) => {
       { key: "companyName",     label: "Company",               sortable: true  },
       { key: "catalogue",       label: "Article Number",        sortable: false },
       { key: "quantity",        label: "Quantity",              sortable: true  },
-      { key: "weightvolsubqty", label: "Weight / Vol / Sub QTY",  sortable: false },
+      { key: "weightvolsubqty", label: "Qty / Packaging Unit",  sortable: false },
       { key: "price",           label: "Price",                 sortable: true  },
       { key: "budgetno",        label: "Budget Number",         sortable: false },
       { key: "orderedby",       label: "Ordered By",            sortable: false },
-      { key: "status",          label: "Status",                sortable: true  },
+      { key: "status",          label: "Order Status",          sortable: true  },
     ];
 
     // Create a mapping of lowercase column keys to their actual keys (after spelling corrections)
@@ -478,6 +479,21 @@ const enhanceColumns = (columns: OrderColumn[], userRole: any) => {
         ? (row: Order) => openOrderDetails(row)
         : column.onClick,
   }));
+
+  // ✅ Add Inventory Type column
+  if (!updatedColumns.some((col) => col.key === "inventoryType")) {
+    updatedColumns.push({ key: "inventoryType", label: "Inventory Type", sortable: false, isDate: false, hidden: false, onClick: undefined });
+  }
+
+  // ✅ Add LM Approved column
+  if (!updatedColumns.some((col) => col.key === "labApproved")) {
+    updatedColumns.push({ key: "labApproved", label: "LM Approved", sortable: false, isDate: false, hidden: false, onClick: undefined });
+  }
+
+  // ✅ Add GL Approved column
+  if (!updatedColumns.some((col) => col.key === "adminApproved")) {
+    updatedColumns.push({ key: "adminApproved", label: "GL Approved", sortable: false, isDate: false, hidden: false, onClick: undefined });
+  }
 
   // ✅ Role-based action column
   if (["admin", "labmgmt", "podept", "purchase department", "groupleader"].includes(role)) {
@@ -619,6 +635,7 @@ const enhanceList = (list: Order[], userRole: any) => {
       setViewOrderModal({ open: true, order: rawOrder });
     } else {
       setSelectedOrder(mapFormDataToOrder(row, userRole));
+      setExistingAttachmentName(typeof row.safetydatasheet === "string" && row.safetydatasheet ? row.safetydatasheet : null);
       setIsModalOpen(true);
     }
   };
@@ -747,7 +764,7 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
     budgetno: formData.budgetno,
     price: formData.price || 0,
     // Removed 'role' property as it does not exist in 'Order' type
-    safetydatasheet: formData.safetydatasheet || "",
+    safetydatasheet: null,
     expiryDate:
       formatToISOWithOffset(formData.expiryDate) ||
       formatToISOWithOffset(formData.expirydate),
@@ -781,8 +798,8 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
     adminName: normalizeString(formData.adminName),
     userName: userRole?.name || "",
     status: normalizeString(formData.status || "Pending"),
-    attachment: normalizeString(formData.attachment),
-    fileContent: normalizeArray(formData.fileContent),
+    attachment: null,
+    fileContent: [],
     createdAt: formatToISOWithOffset(formData.createdAt),
     updatedAt: formatToISOWithOffset(formData.updatedAt),
     createdBy: normalizeString(formData.createdBy),
@@ -982,7 +999,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setExistingAttachmentName(null); }}
         title={`Update ${isFineChemical(selectedOrder) ? "Fine Chemical" : "General Inventory"} Order`}
       >
         <ReusableForm
@@ -994,6 +1011,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
           initialValues={selectedOrder || {}}
           onSubmit={handleOrderSubmit}
           onFieldChange={handleCompanyFieldChange}
+          existingFileNames={existingAttachmentName ? { attachment: existingAttachmentName } : {}}
         />
       </Modal>
 

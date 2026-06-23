@@ -2,7 +2,7 @@ import { Button } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import Modal from "../../../shared/components/Modal";
 // import addOrderFormConfig from "../../../shared/config/addOrderFormConfig";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 // import addProductFormConfig from "../../../shared/config/addProductFormConfig";
 import useAppDispatch from "../../../shared/hooks/useAppDispatch";
 import { useAppSelector } from "../../../shared/hooks/customHooks";
@@ -83,7 +83,7 @@ const [shareInitialValues] =
     // groupName: product.groupName || userRole.groupName || "",
     companyinternalno: product.companyinternalno || "",
     sapmaterialno: product.sapmaterialno || "",
-    weightvolsubqty: product.weightvolsubqty || "",
+    weightvolsubqty: product.weightvolsubqty || product.wvsubqty || "",
     budgetno: product.budgetno ? `${product.budgetno}` : "",
     concentration: product.concentration || "",
     remarks: product.remarks || "",
@@ -458,39 +458,36 @@ const handleShareSubmit = async (
   const handleUpdate = () => setIsProductModalOpen(true);
 
   const handleOrderSubmit: (formData: Record<string, any>) => Promise<void> = async (formData) => {
-    // Ensure productId is set correctly
-    formData.productId = product?.productId ?? 0;
-    formData.addedby = userRole.name;       // ✅ Logged-in user name
-    formData.groupName = userRole.groupName; // ✅ User’s group
-    formData.role = userRole.role;
-
-    // ReusableForm stores files as File[] — extract the first element
-    const rawAttachment = formData.attachment;
-    const fileObj: File | null = Array.isArray(rawAttachment) && rawAttachment.length > 0
-      ? rawAttachment[0]
-      : rawAttachment instanceof File ? rawAttachment : null;
-    delete formData.attachment;
-
     try {
+      formData.productId = product?.productId ?? 0;
+      formData.addedby = userRole.name;
+      formData.groupName = userRole.groupName;
+      formData.role = userRole.role;
+
+      const rawAttachment = formData.attachment;
+      const fileObj: File | null = Array.isArray(rawAttachment) && rawAttachment.length > 0
+        ? rawAttachment[0]
+        : rawAttachment instanceof File ? rawAttachment : null;
+      delete formData.attachment;
+
       const orderData = mapProductToOrder(formData, userRole);
+      console.log("📦 orderData:", JSON.stringify(orderData));
+      console.log("📎 fileObj:", fileObj);
 
       const payload = new FormData();
-
       payload.append("order", JSON.stringify(orderData));
-
-      console.log("🚀 Final payload to addOrder:", payload);
-
       if (fileObj) {
-        payload.append("file", fileObj, fileObj.name); // attach file if present
+        payload.append("file", fileObj, fileObj.name);
       }
 
       await dispatch(addOrder(payload)).unwrap();
       alert("Order placed successfully!");
       setIsModalOpen(false);
       navigate(`/orders`);
-    } catch (error) {
-      console.error("Order submission failed:", error);
-      alert("Failed to place order.");
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.message || String(error);
+      console.error("Order submission failed:", msg, error);
+      alert("Failed to place order: " + msg);
     }
   };
 
@@ -578,6 +575,16 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
     console.log("ProductDetails - getValue - result:", result);
     return result;
   };
+
+  // Ensure the product's own company always appears as an option even before the companies list loads
+  const effectiveCompanyOptions = useMemo(() => {
+    const base = companyOptions.length > 0 ? companyOptions : [];
+    const productCompany = order?.companyname;
+    if (productCompany && !base.some(opt => opt.key === productCompany)) {
+      return [{ label: productCompany, key: productCompany }, ...base];
+    }
+    return base;
+  }, [companyOptions, order]);
 
   return (
     <>
@@ -740,7 +747,7 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Order">
         <ReusableForm
-          formConfig={addOrderProdFormConfig(budget || [], companyOptions)}
+          formConfig={addOrderProdFormConfig(budget || [], effectiveCompanyOptions)}
           initialValues={order || {}}
           onSubmit={handleOrderSubmit}
           onFieldChange={handleCompanyFieldChange}

@@ -36,6 +36,7 @@ type FormProps = {
   onSubmit: (formData: Record<string, any>) => void;
   disabled?: boolean;
   onFieldChange?: (id: string, value: any) => Partial<Record<string, any>> | void;
+  existingFileNames?: Record<string, string>;
 };
 
 const ReusableForm: React.FC<FormProps> = ({
@@ -44,6 +45,7 @@ const ReusableForm: React.FC<FormProps> = ({
   onSubmit,
   disabled = false,
   onFieldChange,
+  existingFileNames = {},
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -97,6 +99,8 @@ const ReusableForm: React.FC<FormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (disabled) return;
+
+    console.log("🔍 ReusableForm submit - full formData:", JSON.stringify(formData, null, 2));
 
     const newErrors: Record<string, string> = {};
 
@@ -169,6 +173,14 @@ const ReusableForm: React.FC<FormProps> = ({
                     handleFileChange(files, field);
                   }}
                 />
+
+                {/* ✅ EXISTING SERVER FILE */}
+                {existingFileNames[field.id] && !formData[field.id]?.length && (
+                  <div className="mt-2 d-flex align-items-center gap-2">
+                    <span className="text-muted" style={{ fontSize: "0.85rem" }}>Current file:</span>
+                    <span className="text-primary fw-semibold" style={{ fontSize: "0.85rem" }}>{existingFileNames[field.id]}</span>
+                  </div>
+                )}
 
                 {/* ✅ FILE LIST */}
                 {formData[field.id]?.length > 0 && (
