@@ -663,6 +663,12 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
                     <span className="pd-label">SAP Material No</span>
                     <span className="pd-value">{getValue(product.sapmaterialno)}</span>
                   </div>
+                  {product.sourceOrderId && (
+                    <div className="pd-field">
+                      <span className="pd-label">Source Order ID</span>
+                      <span className="pd-value">{product.sourceOrderId}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

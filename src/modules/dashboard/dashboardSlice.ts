@@ -146,19 +146,17 @@ export const orderedPOD = createThunk(
 
 export const deliveredPOD = createThunk(
   "dashboard/delivered",
-  ({ id, user, orderType, barcodeInfo }: {
+  ({ id, user, orderType, barcodeInfo, storageLocation }: {
     id: number;
     user: { email: string; name: string; role: string; groupName: string };
     orderType?: string;
     barcodeInfo?: string;
+    storageLocation?: string;
   }) => {
-    const params = new URLSearchParams({
-      page: "1", size: "10000", id: "10",
-      email: user.email, name: user.name, role: user.role,
-    });
-    if (orderType) params.append("orderType", orderType);
-    if (barcodeInfo) params.append("barcodeInfo", barcodeInfo);
-    return axiosClient.get(`api/orders/delivered/${id}?${params.toString()}`).then((res) => res.data);
+    return axiosClient.post(`api/orders/delivered/${id}`, {
+      email: user.email, name: user.name, role: user.role, groupName: user.groupName,
+      orderType, barcodeInfo, storageLocation,
+    }).then((res) => res.data);
   }
 );
 

@@ -569,7 +569,7 @@ const enhanceList = (list: Order[], userRole: any) => {
     }
 
     if (role === "admin" || role === "groupleader") {
-      const canAct = role === "admin" || item.groupName === userRole.groupName;
+      const canAct = (role === "admin" || item.groupName === userRole.groupName) && !!item.labApproved;
 
       requestButtons = canAct ? (
         <>
@@ -694,7 +694,7 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
       const apiName = (status === "Ordered") ? orderedPOD : deliveredPOD;
       const payload = status === "Ordered"
         ? { id: order.orderId, user }
-        : { id: order.orderId, user, orderType: extra?.orderType, barcodeInfo: extra?.barcodeInfo };
+        : { id: order.orderId, user, orderType: extra?.orderType, barcodeInfo: extra?.barcodeInfo, storageLocation: extra?.storageLocation };
       await dispatch(apiName(payload)).unwrap();
       alert(`Order ${status} successfully!`);
       
