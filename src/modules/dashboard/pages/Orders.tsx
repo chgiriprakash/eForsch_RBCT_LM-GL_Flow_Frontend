@@ -514,7 +514,8 @@ const enhanceColumns = (columns: OrderColumn[], userRole: any) => {
 };
 
 const isFineChemical = (order: any) =>
-  order?.inventoryType === "fineChemicalInventory";
+  typeof order?.inventoryType === "string" &&
+  order.inventoryType.toLowerCase() === "finechemicalinventory";
 
 // ✅ Modify `enhanceList` function to use `formatDate`
 const enhanceList = (list: Order[], userRole: any) => {
