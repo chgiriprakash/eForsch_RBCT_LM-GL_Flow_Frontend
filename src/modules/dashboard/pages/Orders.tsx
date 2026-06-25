@@ -1290,8 +1290,8 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                 </div>
               </div>
 
-              {/* Delivery Info — Fine Chemical only */}
-              {isFineChemical(viewOrderModal.order) && (
+              {/* Delivery Info — shown when any delivery field is populated */}
+              {(viewOrderModal.order.storageLocation || viewOrderModal.order.orderType || viewOrderModal.order.barcodeInfo) && (
                 <div className="pd-card" style={{ gridColumn: "2 / 4" }}>
                   <div className="pd-card-header"><i className="fa fa-truck pd-card-icon" /><span>Delivery Info</span></div>
                   <div className="pd-fields">
