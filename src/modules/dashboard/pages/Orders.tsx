@@ -513,9 +513,12 @@ const enhanceColumns = (columns: OrderColumn[], userRole: any) => {
   return updatedColumns;
 };
 
-const isFineChemical = (order: any) =>
-  typeof order?.inventoryType === "string" &&
-  order.inventoryType.toLowerCase() === "finechemicalinventory";
+const isFineChemical = (order: any) => {
+  const raw = typeof order?.inventoryType === "string"
+    ? order.inventoryType
+    : (order?._inventoryTypeRaw || "");
+  return raw.toLowerCase() === "finechemicalinventory";
+};
 
 // ✅ Modify `enhanceList` function to use `formatDate`
 const enhanceList = (list: Order[], userRole: any) => {
@@ -616,10 +619,11 @@ const enhanceList = (list: Order[], userRole: any) => {
       labApproved: item.labApproved
         ? <i className="fa fa-check-circle text-success"></i>
         : <i className="fa fa-times-circle text-danger"></i>,
+      _inventoryTypeRaw: typeof item.inventoryType === "string" ? item.inventoryType : "",
       inventoryType:
         item.inventoryType === "generalInventory"
           ? <i className="fa fa-flask text-primary"></i>
-          : <i className="fa fa-flask text-warning"></i>, // Display only, does not overwrite inventoryType
+          : <i className="fa fa-flask text-warning"></i>,
       request: requestButtons,
     };
   });
@@ -651,11 +655,13 @@ const enhanceList = (list: Order[], userRole: any) => {
     } else {
       // Use raw unenhanced data to get the filename (enhanceList overwrites some fields with JSX)
       const rawRow = origalData?.list?.find((o: any) => o.orderId === row.orderId) || row;
-      const isLocked = row._labApprovedRaw === true;
+      const isLocked = row._labApprovedRaw === true || rawRow.labApproved === true || ["ordered", "delivered"].includes(rawRow.status?.toLowerCase());
 
       if (isLocked) {
         // Lab-approved order — show read-only card/grid view
-        setViewOrderModal({ open: true, order: rawRow });
+        // Merge _inventoryTypeRaw from enhanced row in case origalData lookup failed
+        const mergedRow = { ...rawRow, _inventoryTypeRaw: row._inventoryTypeRaw || rawRow.inventoryType || "" };
+        setViewOrderModal({ open: true, order: mergedRow });
       } else {
         // Not yet approved — show editable form
         const existingFile =

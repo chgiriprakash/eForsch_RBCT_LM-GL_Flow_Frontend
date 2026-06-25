@@ -857,6 +857,36 @@ const FineChemicalsDetails = () => {
                 </div>
               </div>
 
+              {/* Delivery Info — only shown when populated from a delivered order */}
+              {(product.storageLocation || product.orderType || product.barcodeInfo) && (
+                <div className="pd-card pd-card-full">
+                  <div className="pd-card-header">
+                    <i className="fa fa-truck pd-card-icon" />
+                    <span>Delivery Info</span>
+                  </div>
+                  <div className="pd-fields">
+                    {product.storageLocation && (
+                      <div className="pd-field">
+                        <span className="pd-label">Storage Location</span>
+                        <span className="pd-value">{product.storageLocation}</span>
+                      </div>
+                    )}
+                    {product.orderType && (
+                      <div className="pd-field">
+                        <span className="pd-label">Order Type</span>
+                        <span className="pd-value" style={{ textTransform: "capitalize" }}>{product.orderType}</span>
+                      </div>
+                    )}
+                    {product.barcodeInfo && (
+                      <div className="pd-field">
+                        <span className="pd-label">Barcode Info</span>
+                        <span className="pd-value">{product.barcodeInfo}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Attachment — full width */}
               <div className="pd-card pd-card-full">
                 <div className="pd-card-header">
