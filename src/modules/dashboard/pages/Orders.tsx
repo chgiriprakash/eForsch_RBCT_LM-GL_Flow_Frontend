@@ -513,6 +513,9 @@ const enhanceColumns = (columns: OrderColumn[], userRole: any) => {
   return updatedColumns;
 };
 
+const isFineChemical = (order: any) =>
+  order?.inventoryType === "fineChemicalInventory";
+
 // ✅ Modify `enhanceList` function to use `formatDate`
 const enhanceList = (list: Order[], userRole: any) => {
   const role = userRole?.role?.toLowerCase();
@@ -541,12 +544,21 @@ const enhanceList = (list: Order[], userRole: any) => {
       requestButtons = (
         <>
           {item.status?.toLowerCase() === "ordered" && !!item.labApproved && !!item.adminApproved && (
-          <button
-            className="btn-color upload-wrapper btn btn-danger"
-            onClick={() => { setDeliveryModal({ open: true, order: item }); setDeliveryForm({ storageLocation: item.storageLocation || "", orderType: "bulk", barcodeInfo: "" }); }}
-          >
-            Delivered
-          </button>
+            isFineChemical(item) ? (
+              <button
+                className="btn-color upload-wrapper btn btn-danger"
+                onClick={() => { setDeliveryModal({ open: true, order: item }); setDeliveryForm({ storageLocation: item.storageLocation || "", orderType: "bulk", barcodeInfo: "" }); }}
+              >
+                Delivered
+              </button>
+            ) : (
+              <button
+                className="btn-color upload-wrapper btn btn-danger"
+                onClick={() => handleOrder(item, "Delivered", {})}
+              >
+                Delivered
+              </button>
+            )
           )}
           {labPending && (
             <button
@@ -638,18 +650,23 @@ const enhanceList = (list: Order[], userRole: any) => {
     } else {
       // Use raw unenhanced data to get the filename (enhanceList overwrites some fields with JSX)
       const rawRow = origalData?.list?.find((o: any) => o.orderId === row.orderId) || row;
-      console.log("🔍 openOrderDetails rawRow:", rawRow);
-      console.log("🔍 safetydatasheet:", rawRow.safetydatasheet, "| attachment:", rawRow.attachment, "| fileName:", rawRow.fileName);
-      const existingFile =
-        (typeof rawRow.safetydatasheet === "string" && rawRow.safetydatasheet) ? rawRow.safetydatasheet :
-        (typeof rawRow.attachment === "string" && rawRow.attachment) ? rawRow.attachment :
-        (typeof rawRow.fileName === "string" && rawRow.fileName) ? rawRow.fileName :
-        null;
-      console.log("🔍 existingFile resolved:", existingFile);
-      setSelectedOrder(mapFormDataToOrder(row, userRole));
-      setExistingAttachmentName(existingFile);
-      setIsOrderLocked(row._labApprovedRaw === true);
-      setIsModalOpen(true);
+      const isLocked = row._labApprovedRaw === true;
+
+      if (isLocked) {
+        // Lab-approved order — show read-only card/grid view
+        setViewOrderModal({ open: true, order: rawRow });
+      } else {
+        // Not yet approved — show editable form
+        const existingFile =
+          (typeof rawRow.safetydatasheet === "string" && rawRow.safetydatasheet) ? rawRow.safetydatasheet :
+          (typeof rawRow.attachment === "string" && rawRow.attachment) ? rawRow.attachment :
+          (typeof rawRow.fileName === "string" && rawRow.fileName) ? rawRow.fileName :
+          null;
+        setSelectedOrder(mapFormDataToOrder(row, userRole));
+        setExistingAttachmentName(existingFile);
+        setIsOrderLocked(false);
+        setIsModalOpen(true);
+      }
     }
   };
 
@@ -987,9 +1004,6 @@ const handleAddFinechemicalt = async (formData: Record<string, any>) => {
   }
 };
 
-const isFineChemical = (order: any) =>
-  order?.inventoryType === "fineChemicalInventory";
-
 // ✅ Auto-fill company internal number when company is selected
 const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string, any>> | void => {
   if (id === "companyname" || id === "companyName") {
@@ -1175,7 +1189,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
           <div className="reject-modal" style={{ maxWidth: 1050, width: "95%" }}>
 
             {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <div>
                 <span className="pd-breadcrumb">Order</span>
                 <h2 className="pd-product-name">{viewOrderModal.order.productName}</h2>
@@ -1183,6 +1197,14 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
               <button type="button" style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#aaa", lineHeight: 1 }}
                 onClick={() => setViewOrderModal({ open: false, order: null })}>×</button>
             </div>
+
+            {/* Lock banner for scientists viewing a lab-approved order */}
+            {userRole?.role?.toLowerCase() !== "labmgmt" && viewOrderModal.order.labApproved && (
+              <div style={{ background: "#fff3cd", border: "1px solid #ffc107", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#856404", fontWeight: 500, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <i className="fa fa-lock" />
+                This order has been approved by Lab Management. You cannot make any changes.
+              </div>
+            )}
 
             {/* Cards — 3-column grid */}
             <div className="pd-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
@@ -1261,22 +1283,24 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                 </div>
               </div>
 
-              {/* Delivery Info */}
-              <div className="pd-card" style={{ gridColumn: "2 / 4" }}>
-                <div className="pd-card-header"><i className="fa fa-truck pd-card-icon" /><span>Delivery Info</span></div>
-                <div className="pd-fields">
-                  {[
-                    { label: "Storage Location", value: viewOrderModal.order.storageLocation },
-                    { label: "Order Type",        value: viewOrderModal.order.orderType },
-                    { label: "Barcode Info",      value: viewOrderModal.order.barcodeInfo },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="pd-field">
-                      <span className="pd-label">{label}</span>
-                      <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
-                    </div>
-                  ))}
+              {/* Delivery Info — Fine Chemical only */}
+              {isFineChemical(viewOrderModal.order) && (
+                <div className="pd-card" style={{ gridColumn: "2 / 4" }}>
+                  <div className="pd-card-header"><i className="fa fa-truck pd-card-icon" /><span>Delivery Info</span></div>
+                  <div className="pd-fields">
+                    {[
+                      { label: "Storage Location", value: viewOrderModal.order.storageLocation },
+                      { label: "Order Type",        value: viewOrderModal.order.orderType },
+                      { label: "Barcode Info",      value: viewOrderModal.order.barcodeInfo },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="pd-field">
+                        <span className="pd-label">{label}</span>
+                        <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
             </div>
 
