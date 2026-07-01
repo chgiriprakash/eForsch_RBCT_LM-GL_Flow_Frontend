@@ -4,19 +4,16 @@ import Modal from "../../../shared/components/Modal";
 import { useEffect, useState } from "react";
 import { useAppSelector } from "../../../shared/hooks/customHooks";
 import {
-  // addProduct,
-  // deleteProduct,
   fetchFineChemicals,
   getBudgetList,
   getCompanies,
   getStorageLocations,
-  // uploadProduct,
-  // deleteFineChemicals,
   deleteInventoryArchieves,
-  // downloadPDFInv,
   downloadPDFFineChecm,
-  downloadPDF,
-  uploadFineChemical} from "../dashboardSlice";
+  uploadFineChemical,
+  getHPhrases,
+  getPPhrases,
+} from "../dashboardSlice";
 import { addFineChemicals } from "../dashboardSlice";
 import { useAppDispatch } from "../../../shared/hooks/useAppDispatch";
 import FileUpload from "../compoenents/FileUpload";
@@ -134,6 +131,8 @@ const FineChemicals = () => {
   const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
   const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   const [storageLocationOptions, setStorageLocationOptions] = useState<string[]>([]);
+  const [hPhraseOptions, setHPhraseOptions] = useState<Array<{ label: string; key: string }>>([]);
+  const [pPhraseOptions, setPPhraseOptions] = useState<Array<{ label: string; key: string }>>([]);
   
   const fetchData = async () => {
     try {
@@ -155,57 +154,27 @@ const FineChemicals = () => {
         console.warn("API returned no columns. Using default columns.");
       }
   
-      // Define default columns in case API does not return them
-      const defaultColumns: Column[] = [
+      // Fixed listing columns — only show these 8 fields
+      const updatedColumns: Column[] = [
         {
-          key: "productName", label: "Product Name", sortable: true,
-          hidden: undefined
+          key: "productname",
+          label: "Product Name",
+          sortable: true,
+          hidden: false,
+          onClick: (row: Product) => openProductDetails(row),
         },
-        {
-          key: "catalogue", label: "catalogue", sortable: true,
-          hidden: undefined
-        },
-        {
-          key: "companyName", label: "Company Name", sortable: true,
-          hidden: undefined
-        },
-        {
-          key: "quantity", label: "Quantity", sortable: true,
-          hidden: undefined
-        },
-        {
-          key: "priority", label: "Priority", sortable: true,
-          hidden: undefined
-        },
-        {
-          key: "received", label: "Received", sortable: true,
-          hidden: undefined
-        },
-        {
-          key: "remark", label: "Remark",
-          hidden: undefined
-        },
-        {
-          key: "expiryDate", label: "Expiry Date", isDate: true, sortable: true,
-          hidden: undefined
-        },
+        { key: "companyname",  label: "Company",             sortable: true,  hidden: false },
+        { key: "catalogue",    label: "Article Number",      sortable: true,  hidden: false },
+        { key: "quantity",     label: "Quantity",            sortable: true,  hidden: false },
+        { key: "wvsubqty",     label: "Weight / Vol / Sub QTY",sortable: false, hidden: false },
+        { key: "price",        label: "Price",               sortable: true,  hidden: false },
+        { key: "budgetno",     label: "Budget Number",       sortable: true,  hidden: false },
+        { key: "orderedby",    label: "Ordered By",          sortable: false, hidden: false },
+        { key: "action",       label: "Action",              sortable: false, hidden: false },
       ];
-  
-      // Use columns from API if available, otherwise fallback to default
-      const updatedColumns = (columnsFromAPI || defaultColumns).map((column: Column) => ({
-        ...column,
-        onClick:
-          column.key === "productname"
-            ? (row: Product) => openProductDetails(row)
-            : column.key === "filename"
-            ? (row: Product) => addAttachment(row)
-            : undefined,
-        isDate: column.key === "expiryDate" || column.key === "orderdate" ? true : undefined,
-        hidden: column.key.includes("srno") ? true : false,
-      }));
-  
+
       setData({
-        list: normalizedData.list || [], //mockData, //
+        list: normalizedData.list || [],
         columns: updatedColumns,
         pagination: normalizedData.pagination || defaultPagination,
       });
@@ -215,7 +184,16 @@ const FineChemicals = () => {
       console.error("Error fetching products:", err);
       setData({
         list: [],
-        columns: [],
+        columns: [
+          { key: "productname",  label: "Product Name",         sortable: true,  hidden: false },
+          { key: "companyname",  label: "Company",              sortable: true,  hidden: false },
+          { key: "catalogue",    label: "Article Number",       sortable: true,  hidden: false },
+          { key: "quantity",     label: "Quantity",             sortable: true,  hidden: false },
+          { key: "wvsubqty",     label: "Weight / Vol / Sub QTY", sortable: false, hidden: false },
+          { key: "price",        label: "Price",                sortable: true,  hidden: false },
+          { key: "budgetno",     label: "Budget Number",        sortable: true,  hidden: false },
+          { key: "orderedby",    label: "Ordered By",           sortable: false, hidden: false },
+        ],
         pagination: defaultPagination,
       });
     }
@@ -274,26 +252,33 @@ const FineChemicals = () => {
     }
   };
 
+  const fetchHPhrases = async () => {
+    try {
+      const result = await dispatch(getHPhrases()).unwrap();
+      setHPhraseOptions(result.map((h: any) => ({ label: `${h.phraseCode} - ${h.phraseDescription}`, key: h.phraseCode })));
+    } catch (error) {
+      console.error("Failed to fetch H-Phrases:", error);
+    }
+  };
+
+  const fetchPPhrases = async () => {
+    try {
+      const result = await dispatch(getPPhrases()).unwrap();
+      setPPhraseOptions(result.map((p: any) => ({ label: `${p.phraseCode} - ${p.phraseDescription}`, key: p.phraseCode })));
+    } catch (error) {
+      console.error("Failed to fetch P-Phrases:", error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchBudget();
     fetchCompanies();
     fetchStorageLocations();
+    fetchHPhrases();
+    fetchPPhrases();
     console.log("Product Data:", data);
   }, [dispatch]);
-
-const addAttachment = async (row: any) => {
-  const fileUrl =  await dispatch(downloadPDF(row.productid)).unwrap();
-  console.log("File URL:", fileUrl);
-
-  // Open file in a new tab
-  window.open(fileUrl, "_blank");
-
-  alert(`File downloaded successfully!`);
-    
-  fetchData();
-
-};
 
 const openProductDetails = (row: any) => {
   const cleanedRow: any = {};
@@ -397,18 +382,19 @@ const openProductDetails = (row: any) => {
 
     console.log("Submitting Form (raw):", formData);
 
-    // ✅ Extract file object (if present)
-    const fileObj = formData.attachment || null;
+    // ✅ Extract file object (if present) — ReusableForm stores files as File[]
+    const rawAttachment = formData.attachment;
+    const fileObj: File | null =
+      Array.isArray(rawAttachment) && rawAttachment.length > 0 ? rawAttachment[0] :
+      rawAttachment instanceof File ? rawAttachment : null;
     delete formData.attachment;
 
     // ✅ Build FormData for multipart request
     const payload = new FormData();
-
-    // backend expects `finechemical`, not `finechemical`
-    payload.append("finechemical", JSON.stringify(formData));  
+    payload.append("finechemical", JSON.stringify(formData));
 
     if (fileObj) {
-      payload.append("file", fileObj, fileObj.name); // attach file if present
+      payload.append("file", fileObj, fileObj.name);
     }
 
     try {
@@ -618,7 +604,7 @@ const downloadAttachment = async (row: any) => {
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Fine Chemical Product">
-        <ReusableForm formConfig={addFineChemicalsFormConfig(budget || [], companyOptions, storageLocationOptions)} initialValues={initialProductData} onSubmit={handleFormSubmit} onFieldChange={handleCompanyFieldChange} />
+        <ReusableForm formConfig={addFineChemicalsFormConfig(budget || [], companyOptions, storageLocationOptions, hPhraseOptions, pPhraseOptions)} initialValues={initialProductData} onSubmit={handleFormSubmit} onFieldChange={handleCompanyFieldChange} />
       </Modal>
     </>
   );

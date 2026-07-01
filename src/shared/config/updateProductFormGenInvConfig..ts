@@ -66,7 +66,7 @@ const updateProductFormGenInvConfig = (
   },
   {
     id: "weightvolsubqty",
-    label: "Weight / Volume / Sub Qty",
+    label: "Weight / Vol / Sub QTY",
     type: "text",
     validation: { required: true },
   },
@@ -132,7 +132,7 @@ const updateProductFormGenInvConfig = (
   // },
   {
     id: "attachment",
-    label: "Attachment",
+    label: "Please upload SDS in DE and/or EN here",
     type: "file",
     validation: { required: false },
 },

@@ -47,19 +47,26 @@ const navigationConfig = [
         description: 'Got things collecting dust? Toss them here so others can swoop in and claim them. Sharing is caring!',
         roles: ['admin', 'groupleader', 'scientist', 'labMgmt'],
     },
-    /*{
+    {
         icon: 'fa fa-users',
         title: 'Groups',
         link: '/groups',
         description: 'Your squad’s secret lair—where all the group gossip and details live.',
         roles:  ['admin', 'groupleader', 'scientist', 'labMgmt'], // ['admin'] Only visible to Admins
-    },*/
+    },
     {
         icon: 'fa fa-cogs',
         title: 'Protocol',
         link: '/protocol',
         description: 'The treasure chest of “how-to” guides for your experiments. Science ninjas, unite!',
         roles:  ['admin', 'groupleader', 'scientist', 'labMgmt'], // ['admin'] Only visible to Admins
+    },
+    {
+        icon: 'fa fa-sliders',
+        title: 'Administration',
+        link: '/administration',
+        description: 'Manage lookup tables: H-Phrases, P-Phrases, Companies, Storage Locations.',
+        roles: ['admin', 'labMgmt'],
     },
 ];
 

@@ -4,7 +4,7 @@ import DynamicTable from "../../../shared/components/DynamicTable";
 import Modal from "../../../shared/components/Modal";
 import useAppDispatch from "../../../shared/hooks/useAppDispatch";
 import { useAppSelector } from "../../../shared/hooks/customHooks";
-import { addOrder, approveAdmin, approvelabMgmt, deliveredPOD, downloadPDF, addFineChemicalOrder, editFineChemicalOrder, editOrder, fetchOrders, fetchOrdersOD, getBudgetList, getCompanies, getStorageLocations, getGroupNames, orderedPOD, rejectAdmin, rejectlabMgmt } from "../dashboardSlice";
+import { addOrder, approveAdmin, approvelabMgmt, deliveredPOD, downloadPDF, addFineChemicalOrder, editFineChemicalOrder, editOrder, fetchOrders, fetchOrdersOD, getBudgetList, getCompanies, getStorageLocations, getGroupNames, orderedPOD, rejectAdmin, rejectlabMgmt, getHPhrases, getPPhrases } from "../dashboardSlice";
 import ReusableForm from "../../../shared/components/ReusableForm";
 import addOrderFormConfig from "../../../shared/config/addOrderFormConfig";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
@@ -29,7 +29,7 @@ interface Order {
   productname: string;
   catalogue: string;
   companyName: string;
- // sapmaterialno: string;
+  sapmaterialno: string;
   quantity: number;
   budgetno: string;
   price: string;
@@ -44,6 +44,8 @@ interface Order {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+  orderedby?: string;
+  addedby?: string;
   updatedBy: string;
   groupName: string;
   inventoryType?: string; // Added property to fix error
@@ -94,7 +96,7 @@ const initialData: Order = {
   productname: "",
   catalogue: "", // fixed from catalogue
   companyName: "",
- // sapmaterialno: "",
+  sapmaterialno: "",
   quantity: 0,
   budgetno: "",
   price: "",
@@ -147,7 +149,7 @@ const initialGeneralInventoryData = {
   companyname: "",
   quantity: "",
   companyinternalno: "",
- // sapmaterialno: "",
+  sapmaterialno: "",
   weightvolsubqty: "",
   budgetno: "",
   orderdate: "", 
@@ -194,6 +196,8 @@ const Orders = () => {
   const [isModalGIOpen, setIsModalGIOpen] = useState(false);
   const [isModalFCOpen, setIsModalFCOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [existingAttachmentName, setExistingAttachmentName] = useState<string | null>(null);
+  const [isOrderLocked, setIsOrderLocked] = useState(false);
   const [data, setData] = useState<OrderData | null>(null);
   const [origalData, setOrigalData] = useState<OrderData | null>(null);
   console.log("Orders - origalData state:", origalData);
@@ -205,9 +209,16 @@ const Orders = () => {
   const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
   const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   const [storageLocationOptions, setStorageLocationOptions] = useState<string[]>([]);
-  //console.log("groupOptions:", groupOptions);
+  const [hPhraseOptions, setHPhraseOptions] = useState<{ label: string; key: string }[]>([]);
+  const [pPhraseOptions, setPPhraseOptions] = useState<{ label: string; key: string }[]>([]);
+  const [rejectModal, setRejectModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
+  const [rejectReason, setRejectReason] = useState("");
+  const [deliveryModal, setDeliveryModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
+  const [deliveryForm, setDeliveryForm] = useState({ storageLocation: "", orderType: "bulk", barcodeInfo: "" });
+  const [viewOrderModal, setViewOrderModal] = useState<{ open: boolean; order: any | null }>({ open: false, order: null });
+  console.log("groupOptions:", groupOptions);
   
-  //console.log("selectedOrder:", selectedOrder);
+  console.log("selectedOrder:", selectedOrder);
   const fetchData = async () => {
   try {
     const result = await dispatch(fetchOrders(userRole)).unwrap();
@@ -218,13 +229,29 @@ const Orders = () => {
     if (result) {
       const updatedColumns = enhanceColumns(normalizedData.columns || [], userRole);
 
-      // ✅ Filter list by role
       // Approval flow: Scientist → labMgmt (1st approver) → groupleader (2nd approver) → PO
-      let filteredList = normalizedData.list || [];
-      // labMgmt is the FIRST approver — sees ALL pending orders (no frontend filter needed)
-      if (userRole?.role?.toLowerCase() === "groupleader") {
-        // groupleader is the SECOND approver — only sees lab-approved orders
-        filteredList = filteredList.filter((item: Order) => item.labApproved === true);
+      let filteredList = (normalizedData.list || []) as any[];
+      const role = userRole?.role?.toLowerCase();
+
+      // labMgmt sees all non-delivered orders:
+      //   pending (labApproved=false)  → Approve / Reject buttons
+      //   pending (labApproved=true)   → waiting for group leader, no buttons
+      //   ordered (both approved)      → Delivered button
+      //   rejected                     → stays visible so nothing "disappears"
+      if (role === "labmgmt") {
+        filteredList = filteredList.filter((item: any) =>
+          item.status?.toLowerCase() !== "delivered"
+        );
+      }
+
+      // groupleader sees lab-approved orders for their group (for approval action)
+      // AND their own newly placed orders (labApproved may still be false/null)
+      if (role === "groupleader") {
+        filteredList = filteredList.filter((item: any) =>
+          ((item.labApproved === true || item.labapproved === true) &&
+           item.groupName === userRole.groupName) ||
+          item.createdBy === userRole.name
+        );
       }
 
       const updatedList = enhanceList(filteredList, userRole);
@@ -245,13 +272,14 @@ const fetchPodeptData = async () => {
     console.log("Normalized Data:", normalizedData);
 
     if (result) {
-      let filteredList = normalizedData.list || [];
-
-      // ✅ Only for PO Dept & Purchase Department → filter approved items
+      // PO dept sees fully approved orders; rejected ones stay visible so nothing "disappears"
       const role = userRole?.role?.toLowerCase();
+      let filteredList = (normalizedData.list || []) as any[];
       if (role === "podept" || role === "purchase department") {
         filteredList = filteredList.filter(
-          (item: any) => item.adminApproved === true && item.labApproved === true
+          (item: any) =>
+            (item.adminApproved === true && item.labApproved === true) ||
+            item.status?.toLowerCase() === "rejected"
         );
       }
 
@@ -320,10 +348,28 @@ const fetchPodeptData = async () => {
     }
   };
 
+  const fetchHPhrases = async () => {
+    try {
+      const result = await dispatch(getHPhrases()).unwrap();
+      setHPhraseOptions(result.map((p: any) => ({ label: `${p.phraseCode} - ${p.phraseDescription}`, key: p.phraseCode })));
+    } catch (error) {
+      console.error("Failed to fetch H phrases:", error);
+    }
+  };
+
+  const fetchPPhrases = async () => {
+    try {
+      const result = await dispatch(getPPhrases()).unwrap();
+      setPPhraseOptions(result.map((p: any) => ({ label: `${p.phraseCode} - ${p.phraseDescription}`, key: p.phraseCode })));
+    } catch (error) {
+      console.error("Failed to fetch P phrases:", error);
+    }
+  };
+
   // Fetch orders
   useEffect(() => {
     if(userRole.role === "podept" || userRole.role === 'purchase department') {
-      fetchPodeptData(); // Fetch orders only if the user is an Admin
+      fetchPodeptData();
     } else {
       fetchData();
     }
@@ -332,6 +378,8 @@ const fetchPodeptData = async () => {
     fetchGroupNames();
     fetchCompanies();
     fetchStorageLocations();
+    fetchHPhrases();
+    fetchPPhrases();
   }, [dispatch]);
 
 const normalizeKeysAndCleanData = (data: any) => { 
@@ -340,16 +388,31 @@ const normalizeKeysAndCleanData = (data: any) => {
     // Define spelling corrections
     const spellingCorrections: Record<string, string> = {
         recieved: "received",
-        catalogue: "catalogue", // Keep backend spelling (since form uses it)
+        catalogue: "catalogue",
         companyinternalno: "companyinternalno",
-        companyInternalNo: "companyinternalno", // ✅ normalize
-       // sapmaterialno: "sapmaterialno",
-        //sapMaterialNo: "sapmaterialno", // ✅ normalize
-        remark: "remarks", // 
+        companyInternalNo: "companyinternalno",
+        sapmaterialno: "sapmaterialno",
+        sapMaterialNo: "sapmaterialno",
+        remark: "remarks",
+        labapproved: "labApproved",      // preserve camelCase
+        adminapproved: "adminApproved",  // preserve camelCase
+        orderedBy: "orderedby",          // backend column key is camelCase but row data is lowercase
+        weightVolSubQty: "weightvolsubqty", // backend column key is camelCase but row data is lowercase
+        budgetNo: "budgetno",            // OrderVO has both budgetno and budgetNo; merge into one
     };
 
-    // Define keys to remove
-    const unwantedKeys = new Set(["adminName", "userName", "createdBy", "updatedBy", "expiryDate", "approvalStatusDate", "inventoryType", "sapMaterialNo"]);
+    // Define ONLY the columns to show (whitelist) with display labels
+    const allowedColumns: { key: string; label: string; sortable?: boolean }[] = [
+      { key: "productName",     label: "Product Name",          sortable: true  },
+      { key: "companyName",     label: "Company",               sortable: true  },
+      { key: "catalogue",       label: "Article Number",        sortable: false },
+      { key: "quantity",        label: "Quantity",              sortable: true  },
+      { key: "weightvolsubqty", label: "Qty / Packaging Unit",  sortable: false },
+      { key: "price",           label: "Price",                 sortable: true  },
+      { key: "budgetno",        label: "Budget Number",         sortable: false },
+      { key: "orderedby",       label: "Ordered By",            sortable: false },
+      { key: "status",          label: "Order Status",          sortable: true  },
+    ];
 
     // Create a mapping of lowercase column keys to their actual keys (after spelling corrections)
     const keyMapping: Record<string, string> = {};
@@ -358,30 +421,40 @@ const normalizeKeysAndCleanData = (data: any) => {
         keyMapping[column.key.toLowerCase()] = correctedKey;
     });
 
-    // Normalize keys in the list, fix spelling errors, and remove unwanted keys
+    // Keep all list data (we need hidden fields like orderId, labApproved etc. for logic)
     const normalizedList = list.map((item: any) => {
         const normalizedItem: any = {};
         Object.keys(item).forEach((key) => {
             const normalizedKey = keyMapping[key.toLowerCase()] || spellingCorrections[key] || key;
-            if (!unwantedKeys.has(normalizedKey)) {
-                normalizedItem[normalizedKey] = item[key];
+            const value = item[key];
+            // Two backend keys can map to the same normalized key (e.g. budgetno + budgetNo);
+            // never let a null/empty duplicate wipe out a real value
+            if (normalizedItem[normalizedKey] == null || normalizedItem[normalizedKey] === "") {
+                normalizedItem[normalizedKey] = value;
+            } else if (value != null && value !== "") {
+                normalizedItem[normalizedKey] = value;
             }
         });
         return normalizedItem;
     });
 
-    // Normalize columns, fix spelling errors, remove unwanted keys, and remove duplicates
+    // Build columns from whitelist only, preserving order
     const seenKeys = new Set();
-    const normalizedColumns = columns
-        .map((column: any) => ({
-            ...column,
-            key: spellingCorrections[column.key] || column.key,  // Apply spelling correction if needed
-        }))
-        .filter((column: any) => !unwantedKeys.has(column.key)) // Remove unwanted columns
+    const normalizedColumns = allowedColumns
+        .map((allowed) => {
+            const backendCol = columns.find((c: any) =>
+                (spellingCorrections[c.key] || c.key) === allowed.key
+            );
+            return {
+                ...(backendCol || {}),
+                key: allowed.key,
+                label: allowed.label,
+                sortable: allowed.sortable ?? false,
+                filterable: true,
+            };
+        })
         .filter((column: any) => {
-            if (seenKeys.has(column.key)) {
-                return false; // Skip if key already exists
-            }
+            if (seenKeys.has(column.key)) return false;
             seenKeys.add(column.key);
             return true;
         });
@@ -394,57 +467,12 @@ const normalizeKeysAndCleanData = (data: any) => {
 const enhanceColumns = (columns: OrderColumn[], userRole: any) => {
   const role = userRole?.role?.toLowerCase();
 
-const hiddenColumns = [
-    "orderId",
-    "attachment",
-    "status", 
-    "expiryDate",           
-  "companyInternalNo",   // Company Internal No
-  "companyinternalno",   // in case backend sends lowercase
-  "concentration",       // Concentration
-  "adminApproved",       // GL Approved
-  "labApproved"  ,
-  "adminApprovalStatusDate", // GL Approval Date
-  "labApprovalStatusDate", // Lab Approval Date
-  "createdBy",
-  "updatedBy",
-  "createdAt",
-  "updatedAt",
-  "adminName",
-  "userName",
-  "groupName",
-  "productId",
-  "casnumber",
-  "hazardousSubstance",
-  "cmrSubstance",
-  "skinResorptive",
-  "ghsSymbols",
-  "ghsSignalWord",
-  "hPhrases",
-  "pPhrases",
-  "substitutionCheck",
-  "substitutionOption",
-  "storageLocation",
-  "casnumber",        // CAS Number
-  "casNumber",
-  "ghsCheckbox",      // GHS Checkbox
-
-  "orderdate",     // Order Date
-  "orderedby"  ,    // Ordered By
-   "inventoryType",  // Inventory Type
-  "request" ,
-  "fileName",
-   "orderDate",
-  "orderedBy"
-];
-
   let updatedColumns = columns.map((column) => ({
- 
     ...column,
     isDate: ["orderdate", "approvalStatusDate", "createdat", "updatedat"].includes(
       column.key?.toLowerCase()
     ),
-    hidden: hiddenColumns.includes(column.key) ,
+    hidden: column.key.includes("orderId") ? true : false,
     onClick:
       column.key === "attachment"
         ? (row: Order) => addAttachment(row)
@@ -453,16 +481,19 @@ const hiddenColumns = [
         : column.onClick,
   }));
 
-  // ✅ Add Inventory Icon column only once
+  // ✅ Add Inventory Type column
   if (!updatedColumns.some((col) => col.key === "inventoryType")) {
-    updatedColumns.push({
-      key: "inventoryType",
-      label: "Inventory Type",
-      sortable: false,
-      isDate: false,
-      hidden: true,
-      onClick: undefined
-    });
+    updatedColumns.push({ key: "inventoryType", label: "Inventory Type", sortable: false, isDate: false, hidden: false, onClick: undefined });
+  }
+
+  // ✅ Add LM Approved column
+  if (!updatedColumns.some((col) => col.key === "labApproved")) {
+    updatedColumns.push({ key: "labApproved", label: "LM Approved", sortable: false, isDate: false, hidden: false, onClick: undefined });
+  }
+
+  // ✅ Add GL Approved column
+  if (!updatedColumns.some((col) => col.key === "adminApproved")) {
+    updatedColumns.push({ key: "adminApproved", label: "GL Approved", sortable: false, isDate: false, hidden: false, onClick: undefined });
   }
 
   // ✅ Role-based action column
@@ -482,6 +513,13 @@ const hiddenColumns = [
   return updatedColumns;
 };
 
+const isFineChemical = (order: any) => {
+  const raw = typeof order?.inventoryType === "string"
+    ? order.inventoryType
+    : (order?._inventoryTypeRaw || "");
+  return raw.toLowerCase() === "finechemicalinventory";
+};
+
 // ✅ Modify `enhanceList` function to use `formatDate`
 const enhanceList = (list: Order[], userRole: any) => {
   const role = userRole?.role?.toLowerCase();
@@ -490,47 +528,64 @@ const enhanceList = (list: Order[], userRole: any) => {
     let requestButtons = null;
 
     if (role === "podept" || role === "purchase department") {
+      const alreadyOrdered = ["ordered", "delivered"].includes(item.status?.toLowerCase() || "");
       requestButtons = (
         <>
           <button
             className="btn-color upload-wrapper btn btn-primary"
             onClick={() => handleOrder(item, "Ordered")}
+            disabled={alreadyOrdered}
+            title={alreadyOrdered ? "Already ordered" : undefined}
           >
             Ordered
-          </button>
-          <button
-            className="btn-color upload-wrapper btn btn-danger"
-            onClick={() => handleOrder(item, "Delivered")}
-          >
-            Delivered
           </button>
         </>
       );
     }
 
     if (role === "labmgmt") {
+      const labPending = item.status?.toLowerCase() === "pending" && !item.labApproved;
       requestButtons = (
         <>
-          <button
-            className="btn-color upload-wrapper btn btn-primary"
-            onClick={() => handleApproval(item, true)}
-            disabled={!!item.labApproved}
-          >
-            Approve
-          </button>
-          <button
-            className="btn-color upload-wrapper btn btn-danger"
-            onClick={() => handleApproval(item, false)}
-            disabled={!!item.labApproved}
-          >
-            Reject
-          </button>
+          {item.status?.toLowerCase() === "ordered" && !!item.labApproved && !!item.adminApproved && (
+            isFineChemical(item) ? (
+              <button
+                className="btn-color upload-wrapper btn btn-danger"
+                onClick={() => { setDeliveryModal({ open: true, order: item }); setDeliveryForm({ storageLocation: item.storageLocation || "", orderType: "bulk", barcodeInfo: "" }); }}
+              >
+                Delivered
+              </button>
+            ) : (
+              <button
+                className="btn-color upload-wrapper btn btn-danger"
+                onClick={() => handleOrder(item, "Delivered", {})}
+              >
+                Delivered
+              </button>
+            )
+          )}
+          {labPending && (
+            <button
+              className="btn-color upload-wrapper btn btn-primary"
+              onClick={() => handleApproval(item, true)}
+            >
+              Approve
+            </button>
+          )}
+          {labPending && (
+            <button
+              className="btn-color upload-wrapper btn btn-danger"
+              onClick={() => { setRejectModal({ open: true, order: item }); setRejectReason(""); }}
+            >
+              Reject
+            </button>
+          )}
         </>
       );
     }
 
     if (role === "admin" || role === "groupleader") {
-      const canAct = role === "admin" || item.groupName === userRole.groupName;
+      const canAct = (role === "admin" || item.groupName === userRole.groupName) && !!item.labApproved;
 
       requestButtons = canAct ? (
         <>
@@ -554,17 +609,21 @@ const enhanceList = (list: Order[], userRole: any) => {
 
     return {
       ...item,
+      _labApprovedRaw: item.labApproved === true, // preserve raw boolean before icon overwrite
       fileName: item.fileName ? item.fileName : <i className="fa fa-paperclip"></i>,
+      // Fall back to creator for older orders saved without orderedby
+      orderedby: item.orderedby || item.createdBy || item.addedby || "",
       adminApproved: item.adminApproved
         ? <i className="fa fa-check-circle text-success"></i>
         : <i className="fa fa-times-circle text-danger"></i>,
       labApproved: item.labApproved
         ? <i className="fa fa-check-circle text-success"></i>
         : <i className="fa fa-times-circle text-danger"></i>,
+      _inventoryTypeRaw: typeof item.inventoryType === "string" ? item.inventoryType : "",
       inventoryType:
         item.inventoryType === "generalInventory"
           ? <i className="fa fa-flask text-primary"></i>
-          : <i className="fa fa-flask text-warning"></i>, // Display only, does not overwrite inventoryType
+          : <i className="fa fa-flask text-warning"></i>,
       request: requestButtons,
     };
   });
@@ -588,35 +647,56 @@ const enhanceList = (list: Order[], userRole: any) => {
   };
 
   const openOrderDetails = (row: any) => {
-    // const selected = origalData?.list.filter((row) => row.orderId === rowId);
-    // setSelectedOrder(selected ? selected[0] : null);
+    const role = userRole?.role?.toLowerCase();
+    if (role === "labmgmt") {
+      // Find the raw order from origalData for full field access
+      const rawOrder = origalData?.list.find((o: any) => o.orderId === row.orderId) || row;
+      setViewOrderModal({ open: true, order: rawOrder });
+    } else {
+      // Use raw unenhanced data to get the filename (enhanceList overwrites some fields with JSX)
+      const rawRow = origalData?.list?.find((o: any) => o.orderId === row.orderId) || row;
+      const isLocked = row._labApprovedRaw === true || rawRow.labApproved === true || ["ordered", "delivered"].includes(rawRow.status?.toLowerCase());
 
-    //   if(row.inventoryType === "fineChemicalInventory") {
-    //   const result = await dispatch(getFineChemicalById(parseInt(row.orderId))).unwrap();
-    //   setSelectedOrder(mapFormDataToOrder(result.data.list[0]));
-    // } else {
-    //    const result = await dispatch(getProductById(parseInt(row.orderId))).unwrap();
-    //    setSelectedOrder(mapFormDataToOrder(result.data));
-    // }
-
-    setSelectedOrder(mapFormDataToOrder(row, userRole));
-    setIsModalOpen(true);
+      if (isLocked) {
+        // Lab-approved order — show read-only card/grid view
+        // Merge _inventoryTypeRaw from enhanced row in case origalData lookup failed
+        const mergedRow = { ...rawRow, _inventoryTypeRaw: row._inventoryTypeRaw || rawRow.inventoryType || "" };
+        setViewOrderModal({ open: true, order: mergedRow });
+      } else {
+        // Not yet approved — show editable form
+        const existingFile =
+          (typeof rawRow.safetydatasheet === "string" && rawRow.safetydatasheet) ? rawRow.safetydatasheet :
+          (typeof rawRow.attachment === "string" && rawRow.attachment) ? rawRow.attachment :
+          (typeof rawRow.fileName === "string" && rawRow.fileName) ? rawRow.fileName :
+          null;
+        setSelectedOrder(mapFormDataToOrder(row, userRole));
+        setExistingAttachmentName(existingFile);
+        setIsOrderLocked(false);
+        setIsModalOpen(true);
+      }
+    }
   };
 
   // 🟢 Approve/Reject Order
 const handleApproval = async (order: Order, isApproved: boolean) => {
   try {
-    let action;
-
-    if (userRole.role === "admin" || userRole.role === "groupleader") {
-      action = isApproved ? approveAdmin : rejectAdmin;
-    } else if (userRole.role === "labMgmt") {
-      action = isApproved ? approvelabMgmt : rejectlabMgmt;
-    } else {
+    const normalizedRole = userRole.role?.toLowerCase();
+    if (normalizedRole !== "admin" && normalizedRole !== "groupleader" && normalizedRole !== "labmgmt") {
       throw new Error("Unauthorized role");
     }
 
-    await dispatch(action(order.orderId)).unwrap();
+    if (normalizedRole === "labmgmt" && !isApproved) {
+      await dispatch(
+        rejectlabMgmt({ id: order.orderId, rejectReason: rejectReason || "" })
+      ).unwrap();
+    } else if (normalizedRole === "labmgmt") {
+      await dispatch(approvelabMgmt(order.orderId)).unwrap();
+    } else if (isApproved) {
+      await dispatch(approveAdmin(order.orderId)).unwrap();
+    } else {
+      await dispatch(rejectAdmin(order.orderId)).unwrap();
+    }
+
     alert(`Order ${isApproved ? "Approved" : "Rejected"} successfully!`);
 
     if (userRole.role === "podept" || userRole.role === 'purchase department') {
@@ -631,11 +711,15 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
 };
 
 
-   // 🟢 Ordered/Delievered Status Order
-  const handleOrder = async (order: Order, status: string) => {
+   // 🟢 Ordered/Delivered Status Order
+  const handleOrder = async (order: Order, status: string, extra?: { storageLocation?: string; orderType?: string; barcodeInfo?: string }) => {
     try {
+      const user = { email: userRole.email, name: userRole.name, role: userRole.role, groupName: userRole.groupName };
       const apiName = (status === "Ordered") ? orderedPOD : deliveredPOD;
-      await dispatch(apiName({ id: order.orderId, user: { email: userRole.email, name: userRole.name, role: userRole.role, groupName: userRole.groupName } })).unwrap();
+      const payload = status === "Ordered"
+        ? { id: order.orderId, user }
+        : { id: order.orderId, user, orderType: extra?.orderType, barcodeInfo: extra?.barcodeInfo, storageLocation: extra?.storageLocation };
+      await dispatch(apiName(payload)).unwrap();
       alert(`Order ${status} successfully!`);
       
       if(userRole.role === "podept" || userRole.role === 'purchase department') {
@@ -717,7 +801,7 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
     budgetno: formData.budgetno,
     price: formData.price || 0,
     // Removed 'role' property as it does not exist in 'Order' type
-    safetydatasheet: formData.safetydatasheet || "",
+    safetydatasheet: formData.safetydatasheet || null,
     expiryDate:
       formatToISOWithOffset(formData.expiryDate) ||
       formatToISOWithOffset(formData.expirydate),
@@ -751,8 +835,8 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
     adminName: normalizeString(formData.adminName),
     userName: userRole?.name || "",
     status: normalizeString(formData.status || "Pending"),
-    attachment: normalizeString(formData.attachment),
-    fileContent: normalizeArray(formData.fileContent),
+    attachment: null,
+    fileContent: [],
     createdAt: formatToISOWithOffset(formData.createdAt),
     updatedAt: formatToISOWithOffset(formData.updatedAt),
     createdBy: normalizeString(formData.createdBy),
@@ -767,30 +851,42 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
   // 🟢 Edit Order (Submit Form)
   const handleOrderSubmit = async (formData: Record<string, any>) => {
     try {
-      console.log("Before Mapping FormData:", formData);
-
-      // 🟢 Remove the "request" key & map formData to match order structure
       const { request, ...rawFormData } = formData;
 
-      // 🟢 Normalize inventoryType if it’s a React element
+      // Normalize inventoryType React element → string
       if (rawFormData.inventoryType && typeof rawFormData.inventoryType !== "string") {
         const className = rawFormData.inventoryType?.props?.className;
-
-        if (className === "fa fa-flask text-primary") {
-          rawFormData.inventoryType = "generalInventory";
-        } else if (className === "fa fa-flask text-warning") {
-          rawFormData.inventoryType = "fineChemicalInventory";
-        } else {
-          rawFormData.inventoryType = "generalInventory"; // fallback
-        }
+        if (className === "fa fa-flask text-primary") rawFormData.inventoryType = "generalInventory";
+        else if (className === "fa fa-flask text-warning") rawFormData.inventoryType = "fineChemicalInventory";
+        else rawFormData.inventoryType = "generalInventory";
       }
 
-      const mappedFormData = mapFormDataToOrder(rawFormData, userRole);
-      if (userRole.role === "podept" || userRole.role === 'purchase department' || userRole.role === 'labMgmt') {
-        mappedFormData.groupName= formData.groupName;
+      // Extract new file if user selected one (ReusableForm stores File[])
+      const rawAttachment = rawFormData.attachment;
+      const newFile: File | null =
+        Array.isArray(rawAttachment) && rawAttachment.length > 0 ? rawAttachment[0] :
+        rawAttachment instanceof File ? rawAttachment : null;
+      delete rawFormData.attachment;
+
+      const mappedFormData: any = mapFormDataToOrder(rawFormData, userRole);
+      if (userRole.role === "podept" || userRole.role === "purchase department" || userRole.role === "labMgmt") {
+        mappedFormData.groupName = formData.groupName;
       }
-console.log("selectedOrder:", selectedOrder);
-      console.log("Updating Order with Mapped Data:", mappedFormData);
+
+      // If a new file was selected, convert to base64 and include in JSON payload
+      // Otherwise preserve the existing filename (stored in existingAttachmentName state)
+      if (newFile) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(newFile);
+        });
+        mappedFormData.safetydatasheet = newFile.name;
+        mappedFormData.fileContent = base64;
+      } else if (existingAttachmentName) {
+        mappedFormData.safetydatasheet = existingAttachmentName;
+      }
 
       if (mappedFormData.inventoryType === "fineChemicalInventory") {
         await dispatch(editFineChemicalOrder(mappedFormData as Order)).unwrap();
@@ -800,9 +896,10 @@ console.log("selectedOrder:", selectedOrder);
 
       alert("Order updated successfully!");
       setIsModalOpen(false);
+      setExistingAttachmentName(null);
 
-      if (userRole.role === "podept" || userRole.role === 'purchase department') {
-        fetchPodeptData(); // Fetch orders only if the user is from PO Dept
+      if (userRole.role === "podept" || userRole.role === "purchase department") {
+        fetchPodeptData();
       } else {
         fetchData();
       }
@@ -827,8 +924,10 @@ const handleAddGenerlaiInventory = async (formData: Record<string, any>) => {
     formData.groupName = userRole.groupName; // ✅ User’s group
     formData.role = userRole.role;
     
-    const fileObj = formData.attachment || null;
-    delete formData.attachment;
+    const rawAttachmentGI = formData.attachment;
+  const fileObjGI: File | null = Array.isArray(rawAttachmentGI) && rawAttachmentGI.length > 0
+    ? rawAttachmentGI[0] : rawAttachmentGI instanceof File ? rawAttachmentGI : null;
+  delete formData.attachment;
   try {
     console.log("Adding General Inventory with data:", formData);
 
@@ -844,16 +943,17 @@ const handleAddGenerlaiInventory = async (formData: Record<string, any>) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       groupName: userRole.groupName,
+      orderedby: formData.orderedby || userRole.name,
       createdBy: userRole.name,
       updatedBy: userRole.name
     };
 
     const payload = new FormData();
 
-    payload.append("order", JSON.stringify(mappedOrder));  
+    payload.append("order", JSON.stringify(mappedOrder));
 
-    if (fileObj) {
-      payload.append("file", fileObj, fileObj.name); // attach file if present
+    if (fileObjGI) {
+      payload.append("file", fileObjGI, fileObjGI.name);
     }
     
     await dispatch(addOrder(payload)).unwrap();
@@ -868,8 +968,10 @@ const handleAddGenerlaiInventory = async (formData: Record<string, any>) => {
 
 // ✅ Handle adding a Fine Chemical order
 const handleAddFinechemicalt = async (formData: Record<string, any>) => {
-  const fileObj = formData.attachment || null;
-    delete formData.attachment;
+  const rawAttachmentFC = formData.attachment;
+  const fileObj: File | null = Array.isArray(rawAttachmentFC) && rawAttachmentFC.length > 0
+    ? rawAttachmentFC[0] : rawAttachmentFC instanceof File ? rawAttachmentFC : null;
+  delete formData.attachment;
     
   try {
     console.log("Adding Fine Chemical Order with data:", formData);
@@ -886,6 +988,7 @@ const handleAddFinechemicalt = async (formData: Record<string, any>) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       groupName: userRole.groupName,
+      orderedby: formData.orderedby || userRole.name,
       createdBy: userRole.name,
       updatedBy: userRole.name
     };
@@ -907,9 +1010,6 @@ const handleAddFinechemicalt = async (formData: Record<string, any>) => {
     alert("Failed to add order. Please try again.");
   }
 };
-
-const isFineChemical = (order: any) =>
-  order?.inventoryType === "fineChemicalInventory";
 
 // ✅ Auto-fill company internal number when company is selected
 const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string, any>> | void => {
@@ -946,9 +1046,27 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={`Update ${isFineChemical(selectedOrder) ? "Fine Chemical" : "General Inventory"} Order`}
+        onClose={() => { setIsModalOpen(false); setExistingAttachmentName(null); setIsOrderLocked(false); }}
+        title={`${isOrderLocked ? "View" : "Update"} ${isFineChemical(selectedOrder) ? "Fine Chemical" : "General Inventory"} Order`}
       >
+        {isOrderLocked && (
+          <div style={{
+            background: "#fff3cd",
+            border: "1px solid #ffc107",
+            borderRadius: "6px",
+            padding: "10px 14px",
+            marginBottom: "16px",
+            color: "#856404",
+            fontWeight: 500,
+            fontSize: "0.9rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}>
+            <i className="fa fa-lock" />
+            This order has been approved by Lab Management. You cannot make any changes.
+          </div>
+        )}
         <ReusableForm
           formConfig={
             isFineChemical(selectedOrder)
@@ -958,6 +1076,8 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
           initialValues={selectedOrder || {}}
           onSubmit={handleOrderSubmit}
           onFieldChange={handleCompanyFieldChange}
+          existingFileNames={existingAttachmentName ? { attachment: existingAttachmentName } : {}}
+          disabled={isOrderLocked}
         />
       </Modal>
 
@@ -973,12 +1093,275 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
 
       <Modal isOpen={isModalFCOpen} onClose={() => setIsModalFCOpen(false)} title="Add Fine-Chemicals Order">
         <ReusableForm
-          formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions, storageLocationOptions)}
+          formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions, storageLocationOptions, hPhraseOptions, pPhraseOptions)}
           initialValues={initialFineChemicalData || {}}
           onSubmit={handleAddFinechemicalt}
           onFieldChange={handleCompanyFieldChange}
         />
       </Modal>
+
+      {/* Delivery Modal */}
+      {deliveryModal.open && (
+        <div className="reject-modal-overlay">
+          <div className="reject-modal">
+            <h5 className="reject-modal-title">
+              <i className="fa fa-truck me-2 text-success" />
+              Mark as Delivered
+            </h5>
+
+            <div className="reject-modal-field">
+              <label className="reject-modal-label">Storage Location <span className="text-danger">*</span></label>
+              <select
+                className="input"
+                value={deliveryForm.storageLocation}
+                onChange={(e) => setDeliveryForm({ ...deliveryForm, storageLocation: e.target.value })}
+                style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e0e6ef", fontSize: "14px" }}
+              >
+                <option value="">-- Select Storage Location --</option>
+                {storageLocationOptions.map((loc) => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="reject-modal-field">
+              <label className="reject-modal-label">Order Type <span className="text-danger">*</span></label>
+              <div style={{ display: "flex", gap: 24, marginTop: 6 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="orderType"
+                    value="bulk"
+                    checked={deliveryForm.orderType === "bulk"}
+                    onChange={() => setDeliveryForm({ ...deliveryForm, orderType: "bulk", barcodeInfo: "" })}
+                  />
+                  Bulk Order
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="orderType"
+                    value="nonbulk"
+                    checked={deliveryForm.orderType === "nonbulk"}
+                    onChange={() => setDeliveryForm({ ...deliveryForm, orderType: "nonbulk" })}
+                  />
+                  Non-Bulk Order
+                </label>
+              </div>
+            </div>
+
+            {deliveryForm.orderType === "nonbulk" && (
+              <div className="reject-modal-field">
+                <label className="reject-modal-label">Barcode Information <span className="text-danger">*</span></label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Enter barcode..."
+                  value={deliveryForm.barcodeInfo}
+                  onChange={(e) => setDeliveryForm({ ...deliveryForm, barcodeInfo: e.target.value })}
+                />
+              </div>
+            )}
+
+            <div className="reject-modal-actions">
+              <button className="btn btn-secondary" onClick={() => setDeliveryModal({ open: false, order: null })}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-success"
+                disabled={
+                  deliveryForm.orderType === "nonbulk" && !deliveryForm.barcodeInfo.trim()
+                }
+                onClick={async () => {
+                  if (deliveryModal.order) {
+                    await handleOrder(deliveryModal.order, "Delivered", {
+                      storageLocation: deliveryForm.storageLocation,
+                      orderType: deliveryForm.orderType,
+                      barcodeInfo: deliveryForm.barcodeInfo,
+                    });
+                    setDeliveryModal({ open: false, order: null });
+                  }
+                }}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Order Details Modal */}
+      {viewOrderModal.open && viewOrderModal.order && (
+        <div className="reject-modal-overlay">
+          <div className="reject-modal" style={{ maxWidth: 1050, width: "95%" }}>
+
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+              <div>
+                <span className="pd-breadcrumb">Order</span>
+                <h2 className="pd-product-name">{viewOrderModal.order.productName}</h2>
+              </div>
+              <button type="button" style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#aaa", lineHeight: 1 }}
+                onClick={() => setViewOrderModal({ open: false, order: null })}>×</button>
+            </div>
+
+            {/* Lock banner for scientists viewing a lab-approved order */}
+            {userRole?.role?.toLowerCase() !== "labmgmt" && viewOrderModal.order.labApproved && (
+              <div style={{ background: "#fff3cd", border: "1px solid #ffc107", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#856404", fontWeight: 500, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <i className="fa fa-lock" />
+                This order has been approved by Lab Management. You cannot make any changes.
+              </div>
+            )}
+
+            {/* Cards — 3-column grid */}
+            <div className="pd-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+
+              {/* Product Info */}
+              <div className="pd-card">
+                <div className="pd-card-header"><i className="fa fa-flask pd-card-icon" /><span>Product Info</span></div>
+                <div className="pd-fields">
+                  {[
+                    { label: "Company",            value: viewOrderModal.order.companyName || viewOrderModal.order.companyname },
+                    { label: "Catalogue No",        value: viewOrderModal.order.catalogue },
+                    { label: "Quantity",            value: viewOrderModal.order.quantity },
+                    { label: "Weight / Vol / Sub QTY", value: viewOrderModal.order.weightvolsubqty || viewOrderModal.order.weightVolSubQty },
+                    { label: "Concentration",       value: viewOrderModal.order.concentration },
+                    { label: "Remarks",             value: viewOrderModal.order.remarks },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="pd-field">
+                      <span className="pd-label">{label}</span>
+                      <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* IDs */}
+              <div className="pd-card">
+                <div className="pd-card-header"><i className="fa fa-barcode pd-card-icon" /><span>IDs</span></div>
+                <div className="pd-fields">
+                  {[
+                    { label: "Company Internal No", value: viewOrderModal.order.companyinternalno || viewOrderModal.order.companyInternalNo },
+                    { label: "SAP Material No",     value: viewOrderModal.order.sapmaterialno || viewOrderModal.order.sapMaterialNo },
+                    { label: "Expiry Date",         value: viewOrderModal.order.expiryDate ? new Date(viewOrderModal.order.expiryDate).toLocaleDateString("en-GB") : null },
+                    { label: "Order Date",          value: viewOrderModal.order.orderdate ? new Date(viewOrderModal.order.orderdate).toLocaleDateString("en-GB") : null },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="pd-field">
+                      <span className="pd-label">{label}</span>
+                      <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Financials */}
+              <div className="pd-card">
+                <div className="pd-card-header"><i className="fa fa-euro-sign pd-card-icon" /><span>Financials</span></div>
+                <div className="pd-fields">
+                  {[
+                    { label: "Price",      value: viewOrderModal.order.price },
+                    { label: "Budget No",  value: viewOrderModal.order.budgetno },
+                    { label: "Ordered By", value: viewOrderModal.order.orderedby },
+                    { label: "Status",     value: viewOrderModal.order.status },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="pd-field">
+                      <span className="pd-label">{label}</span>
+                      <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Ownership */}
+              <div className="pd-card">
+                <div className="pd-card-header"><i className="fa fa-users pd-card-icon" /><span>Ownership</span></div>
+                <div className="pd-fields">
+                  {[
+                    { label: "Group Name",   value: viewOrderModal.order.groupName },
+                    { label: "Added By",     value: viewOrderModal.order.createdBy || viewOrderModal.order.userName },
+                    { label: "LM Approved",  value: viewOrderModal.order.labApproved != null ? (viewOrderModal.order.labApproved ? "Yes" : "No") : null },
+                    { label: "GL Approved",  value: viewOrderModal.order.adminApproved != null ? (viewOrderModal.order.adminApproved ? "Yes" : "No") : null },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="pd-field">
+                      <span className="pd-label">{label}</span>
+                      <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Delivery Info — shown when any delivery field is populated */}
+              {(viewOrderModal.order.storageLocation || viewOrderModal.order.orderType || viewOrderModal.order.barcodeInfo) && (
+                <div className="pd-card" style={{ gridColumn: "2 / 4" }}>
+                  <div className="pd-card-header"><i className="fa fa-truck pd-card-icon" /><span>Delivery Info</span></div>
+                  <div className="pd-fields">
+                    {[
+                      { label: "Storage Location", value: viewOrderModal.order.storageLocation },
+                      { label: "Order Type",        value: viewOrderModal.order.orderType },
+                      { label: "Barcode Info",      value: viewOrderModal.order.barcodeInfo },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="pd-field">
+                        <span className="pd-label">{label}</span>
+                        <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+              <button className="btn btn-secondary" onClick={() => setViewOrderModal({ open: false, order: null })}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Confirmation Modal */}
+      {rejectModal.open && (
+        <div className="reject-modal-overlay">
+          <div className="reject-modal">
+            <h5 className="reject-modal-title">
+              <i className="fa fa-exclamation-triangle me-2 text-danger" />
+              Confirm Rejection
+            </h5>
+            <p className="reject-modal-subtitle">
+              Are you sure you want to reject this order?
+            </p>
+            <div className="reject-modal-field">
+              <label className="reject-modal-label">Rejection Reason <span className="text-danger">*</span></label>
+              <textarea
+                className="reject-modal-textarea"
+                rows={4}
+                placeholder="Please provide a reason for rejection..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+            </div>
+            <div className="reject-modal-actions">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setRejectModal({ open: false, order: null })}
+              >
+                No, Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                disabled={!rejectReason.trim()}
+                onClick={async () => {
+                  if (rejectModal.order) {
+                    await handleApproval(rejectModal.order, false);
+                    setRejectModal({ open: false, order: null });
+                  }
+                }}
+              >
+                Yes, Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

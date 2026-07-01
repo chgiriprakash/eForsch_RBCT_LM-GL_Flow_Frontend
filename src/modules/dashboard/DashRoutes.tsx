@@ -5,7 +5,7 @@ import Home from './pages/Home';
 import Orders from './pages/Orders';
 import Protocol from './pages/Protocol';
 import Sharing from './pages/Sharing';
-//import Groups from './pages/Groups';
+import Groups from './pages/Groups';
 import ProductDetails from './pages/ProductDetails';
 import Users from './pages/Users';
 import ProtectedRoute from '../../routes/ProtectedRoute';
@@ -32,6 +32,7 @@ import ProfilePage from './pages/ProfilePage';
 import GroupSharing from './pages/GroupSharing';
 import LabSharing from './pages/LabSharing';
 import AllRequest from './pages/AllRequest';
+import Administration from './pages/Administration';
 
 
 const DashRoutes = () => (
@@ -72,7 +73,7 @@ const DashRoutes = () => (
       <Route path="orders" element={<Orders />} />
       {/* <Route path="sharing" element={<Sharing />} /> */}
       {/* <Route path="sharing/:id" element={<Sharing />} /> */}
-      {/*<Route path="groups" element={<Groups />} />*/}
+      <Route path="groups" element={<Groups />} />
       <Route path="protocol" element={<Protocol />} />
       <Route path="budget" element={<Budget />} />
       <Route path="notifications" element={<Notifications />} />
@@ -102,6 +103,16 @@ const DashRoutes = () => (
         <Route path="my-projects" element={<CreateProject />} />
         <Route path="projects-archives" element={<ProjectArchives />} />
       </Route>
+
+      {/* Administration (Admin and Lab Management) */}
+      <Route
+        path="administration"
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'labMgmt']}>
+            <Administration />
+          </ProtectedRoute>
+        }
+      />
     </Route>
   </Routes>
 );

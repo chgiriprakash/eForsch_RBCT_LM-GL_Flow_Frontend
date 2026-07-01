@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import useAppDispatch from "../../../shared/hooks/useAppDispatch";
-import { useAppSelector } from "../../../shared/hooks/customHooks";
 import DynamicTable from "../../../shared/components/DynamicTable";
 import { getArchievesList } from "../dashboardSlice";
 import { JSX } from "react/jsx-runtime";
@@ -30,31 +29,33 @@ interface ProductListResponse {
 }
 
 const Archieves = () => {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const groupName = user.groupName|| user.role;
+  const userRole = JSON.parse(localStorage.getItem("user") || "{}");
   const [data, setData] = useState<ProductListResponse | null>(null);
+  const [localLoading, setLocalLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const dispatch = useAppDispatch();
-  const { loading, error } = useAppSelector((state) => state.dashboard);
 
   useEffect(() => {
     fetchArchieves();
-  }, [dispatch]);
+  }, []);
 
   const fetchArchieves = async () => {
+    setLocalLoading(true);
+    setFetchError(null);
     try {
-      const result = await dispatch(getArchievesList(groupName)).unwrap();
+      const result = await dispatch(getArchievesList(userRole)).unwrap();
 
       // ✅ Correct API structure: result.data.list
       const normalizedData = normalizeKeysAndCleanData(result.data);
 
       const updatedColumns = enhanceColumns(
         normalizedData.columns || [],
-        groupName
+        userRole
       );
 
       const updatedList = enhanceList(
         normalizedData.list || [],
-        groupName
+        userRole
       );
 
       setData({
@@ -63,8 +64,11 @@ const Archieves = () => {
         pagination: normalizedData.pagination,
       });
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching archives:", err);
+      setFetchError(err?.message || JSON.stringify(err) || "Failed to load archives");
+    } finally {
+      setLocalLoading(false);
     }
   };
 
@@ -172,16 +176,18 @@ const Archieves = () => {
 
   return (
     <>
-      {error && <p>Error: {error}</p>}
+      {fetchError && <p style={{ color: "red" }}>Error: {fetchError}</p>}
 
-     {!loading && data ? (
+     {!localLoading && data ? (
         <DynamicTable
-          data={data.list || []}        
-          columns={data.columns || []}  
+          data={data.list || []}
+          columns={data.columns || []}
           pagination={data.pagination}
         />
-      ) : (
+      ) : localLoading ? (
         <p>Loading...</p>
+      ) : (
+        <p>No archive data available.</p>
       )}
     </>
   );

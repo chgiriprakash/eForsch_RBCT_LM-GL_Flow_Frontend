@@ -2,7 +2,7 @@ import { Button } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import Modal from "../../../shared/components/Modal";
 // import addOrderFormConfig from "../../../shared/config/addOrderFormConfig";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 // import addProductFormConfig from "../../../shared/config/addProductFormConfig";
 import useAppDispatch from "../../../shared/hooks/useAppDispatch";
 import { useAppSelector } from "../../../shared/hooks/customHooks";
@@ -14,7 +14,9 @@ import {  addOrder,
   getGroupNames,
   shareProduct,
   getProfile,
-  getCompanies, } from "../dashboardSlice";
+  getCompanies,
+  downloadPDFInv,
+  uploadInventoryFile, } from "../dashboardSlice";
 import addOrderProdFormConfig from "../../../shared/config/addOrderProdFormConfig";
 import updateProductFormGenInvConfig from "../../../shared/config/updateProductFormGenInvConfig.";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
@@ -81,17 +83,14 @@ const [shareInitialValues] =
     // groupName: product.groupName || userRole.groupName || "",
     companyinternalno: product.companyinternalno || "",
     sapmaterialno: product.sapmaterialno || "",
-    weightvolsubqty: product.weightvolsubqty || "",
+    weightvolsubqty: product.weightvolsubqty || product.wvsubqty || "",
     budgetno: product.budgetno ? `${product.budgetno}` : "",
     concentration: product.concentration || "",
     remarks: product.remarks || "",
     orderdate: product.orderdate || "",
     expirydate: product.expirydate || "",
     addedby: product.addedby || userRole.name,
-    // shared: product.shared ?? false,
-    // fileName: product.fileName || null,
-    // fileType: product.fileType || null,
-    // fileContent: product.fileContent || null,
+    orderedby: userRole?.name || "",
 
     // ✅ Extra order-related fields
     price: product.price || 0,
@@ -459,35 +458,36 @@ const handleShareSubmit = async (
   const handleUpdate = () => setIsProductModalOpen(true);
 
   const handleOrderSubmit: (formData: Record<string, any>) => Promise<void> = async (formData) => {
-    // Ensure productId is set correctly
-    formData.productId = product?.productId ?? 0;
-    formData.addedby = userRole.name;       // ✅ Logged-in user name
-    formData.groupName = userRole.groupName; // ✅ User’s group
-    formData.role = userRole.role;
-
-    const fileObj = formData.attachment || null;
-    delete formData.attachment;
-
     try {
+      formData.productId = product?.productId ?? 0;
+      formData.addedby = userRole.name;
+      formData.groupName = userRole.groupName;
+      formData.role = userRole.role;
+
+      const rawAttachment = formData.attachment;
+      const fileObj: File | null = Array.isArray(rawAttachment) && rawAttachment.length > 0
+        ? rawAttachment[0]
+        : rawAttachment instanceof File ? rawAttachment : null;
+      delete formData.attachment;
+
       const orderData = mapProductToOrder(formData, userRole);
+      console.log("📦 orderData:", JSON.stringify(orderData));
+      console.log("📎 fileObj:", fileObj);
 
       const payload = new FormData();
-
-      payload.append("order", JSON.stringify(orderData));  
-
-      console.log("🚀 Final payload to addOrder:", payload);
-
+      payload.append("order", JSON.stringify(orderData));
       if (fileObj) {
-        payload.append("file", fileObj, fileObj.name); // attach file if present
+        payload.append("file", fileObj, fileObj.name);
       }
 
       await dispatch(addOrder(payload)).unwrap();
       alert("Order placed successfully!");
       setIsModalOpen(false);
       navigate(`/orders`);
-    } catch (error) {
-      console.error("Order submission failed:", error);
-      alert("Failed to place order.");
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.message || String(error);
+      console.error("Order submission failed:", msg, error);
+      alert("Failed to place order: " + msg);
     }
   };
 
@@ -500,31 +500,29 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
     formData.addedby = userRole.name;
     formData.groupName = userRole.groupName;
 
-    // ✅ Convert and normalize payload
-    const finalPayload = mapToModifyApiPayload(formData);
+    // ReusableForm stores files as File[] — extract the first element
+    const rawAttachment = formData.attachment;
+    const attachmentFile: File | null =
+      Array.isArray(rawAttachment) && rawAttachment.length > 0 ? rawAttachment[0] :
+      rawAttachment instanceof File ? rawAttachment : null;
 
-    // ✅ Convert File to base64 if attachment exists
-    if (formData.attachment instanceof File) {
-      const file = formData.attachment;
-      const base64String = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      finalPayload.fileContent = [base64String];
-      finalPayload.fileName = file.name;
-      finalPayload.fileType = file.type;
+    delete formData.attachment;
+
+    // ✅ Update product metadata (JSON — no file)
+    const finalPayload = mapToModifyApiPayload(formData);
+    await dispatch(editProduct(finalPayload)).unwrap();
+
+    // ✅ Upload file separately via the dedicated endpoint if provided
+    if (attachmentFile) {
+      const fileFormData = new FormData();
+      fileFormData.append("file", attachmentFile, attachmentFile.name);
+      await dispatch(uploadInventoryFile({
+        id: product?.productId ?? Number(id),
+        formData: fileFormData,
+      })).unwrap();
     }
 
-    console.log("🚀 Final payload to editProduct:", finalPayload);
-
-    // ✅ Dispatch API call
-    const updated = await dispatch(editProduct(finalPayload)).unwrap();
-
-    // ✅ Update UI
-    setProduct(mapProductToOrder(updated.data, userRole));
-    fetchData(); // Refresh data
+    fetchData();
     setIsProductModalOpen(false);
     alert("Product updated successfully!");
   } catch (error) {
@@ -547,6 +545,28 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
     return result;
   };
 
+  const handleDownloadAttachment = async () => {
+    if (!product?.productId && !id) return;
+    try {
+      const productId = product?.productId || product?.productid || Number(id);
+      const fileUrl = await dispatch(downloadPDFInv(productId)).unwrap();
+      if (fileUrl) {
+        const link = document.createElement("a");
+        link.href = fileUrl;
+        link.download = product?.fileName || product?.filename || "attachment";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(fileUrl);
+      } else {
+        alert("No attachment found for this product.");
+      }
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Failed to download attachment.");
+    }
+  };
+
   const getValue = (value: any) => {
     if (value === null || value === undefined || value === "") {
       return "-";
@@ -556,89 +576,174 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
     return result;
   };
 
+  // Ensure the product's own company always appears as an option even before the companies list loads
+  const effectiveCompanyOptions = useMemo(() => {
+    const base = companyOptions.length > 0 ? companyOptions : [];
+    const productCompany = order?.companyname;
+    if (productCompany && !base.some(opt => opt.key === productCompany)) {
+      return [{ label: productCompany, key: productCompany }, ...base];
+    }
+    return base;
+  }, [companyOptions, order]);
+
   return (
     <>
       {error && <div className="error-message">Error: {error}</div>}
       {!loading && product ? (
         <>
-          <div className="title-header">
-            <div className="btn-wrapper">
-              <Button className="btn-color" onClick={handleOrder}>Add Order</Button>
-              <Button className="btn-color" onClick={handleShare}>Share</Button>
-              <Button className="btn-color" onClick={handleUpdate}>Update Product</Button>
+          <div className="pd-page">
+            {/* Header */}
+            <div className="pd-header">
+              <div className="pd-title-block">
+                <span className="pd-breadcrumb">Inventory</span>
+                <h2 className="pd-product-name">{getValue(product.productname)}</h2>
+              </div>
+              <div className="pd-actions">
+                <Button className="pd-btn pd-btn-outline" onClick={handleShare}>
+                  <i className="fa fa-share-alt me-1" /> Share
+                </Button>
+                <Button className="pd-btn pd-btn-outline" onClick={handleUpdate}>
+                  <i className="fa fa-edit me-1" /> Update
+                </Button>
+                <Button className="pd-btn pd-btn-primary" onClick={handleOrder}>
+                  <i className="fa fa-plus me-1" /> Add Order
+                </Button>
+              </div>
             </div>
-          </div>
 
-          <div className="product-details">
-            <table className="product-details-table">
-              <thead>
-                <tr>
-                  <th colSpan={2}>{getValue(product.productname)}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Catalogue</td>
-                  <td>{getValue(product.catalogue)}</td>
-                </tr>
-                <tr>
-                  <td>Company</td>
-                  <td>{getValue(product.companyname)}</td>
-                </tr>
-                <tr>
-                  <td>Quantity</td>
-                  <td>{getValue(product.quantity)}</td>
-                </tr>
-                <tr>
-                  <td>Company Internal No</td>
-                  <td>{getValue(product.companyinternalno)}</td>
-                </tr>
-                <tr>
-                  <td>SAP Material No</td>
-                  <td>{getValue(product.sapmaterialno)}</td>
-                </tr>
-                <tr>
-                  <td>Weight/Vol Sub QTY</td>
-                  <td>{getValue(product.weightvolsubqty)}</td>
-                </tr>
-                <tr>
-                  <td>Budget No</td>
-                  <td>{getValue(product.budgetno)}</td>
-                </tr>
-                <tr>
-                  <td>Order Date</td>
-                  <td>{formatDate(product.orderdate, "DD-MM-YYYY")}</td>
-                </tr>
-                <tr>
-                  <td>Expiry Date</td>
-                  <td>{formatDate(product.expirydate, "DD-MM-YYYY")}</td>
-                </tr>
-                <tr>
-                  <td>Concentration</td>
-                  <td>{getValue(product.concentration)}</td>
-                </tr>
-                <tr>
-                  <td>Remarks</td>
-                  <td>{getValue(product.remarks)}</td>
-                </tr>
-                <tr>
-                  <td>Price</td>
-                  <td>{getValue(product.price)}</td>
-                </tr>
-                <tr>
-                  <td>Group Name</td>
-                  <td>{getValue(product.groupName)}</td>
-                </tr>
-                <tr>
-                  <td>Added By</td>
-                  <td>{getValue(product.addedby)}</td>
-                </tr>
-                <tr>
-                  <td>Shared</td>
-                  <td>{product.shared ? "Yes" : "No"}</td>
-                </tr>
-              </tbody>
-            </table>
+            {/* Cards grid */}
+            <div className="pd-grid">
+
+              {/* Product Info */}
+              <div className="pd-card">
+                <div className="pd-card-header">
+                  <i className="fa fa-flask pd-card-icon" />
+                  <span>Product Info</span>
+                </div>
+                <div className="pd-fields">
+                  <div className="pd-field">
+                    <span className="pd-label">Catalogue</span>
+                    <span className="pd-value">{getValue(product.catalogue)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Company</span>
+                    <span className="pd-value">{getValue(product.companyname)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Concentration</span>
+                    <span className="pd-value">{getValue(product.concentration)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Remarks</span>
+                    <span className="pd-value">{getValue(product.remarks)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stock & IDs */}
+              <div className="pd-card">
+                <div className="pd-card-header">
+                  <i className="fa fa-barcode pd-card-icon" />
+                  <span>IDs</span>
+                </div>
+                <div className="pd-fields">
+                  <div className="pd-field">
+                    <span className="pd-label">Quantity</span>
+                    <span className="pd-value pd-badge">{getValue(product.quantity)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Weight / Vol / Sub QTY</span>
+                    <span className="pd-value">{getValue(product.weightvolsubqty)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Company Internal No</span>
+                    <span className="pd-value">{getValue(product.companyinternalno)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">SAP Material No</span>
+                    <span className="pd-value">{getValue(product.sapmaterialno)}</span>
+                  </div>
+                  {product.sourceOrderId && (
+                    <div className="pd-field">
+                      <span className="pd-label">Source Order ID</span>
+                      <span className="pd-value">{product.sourceOrderId}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Financials */}
+              <div className="pd-card">
+                <div className="pd-card-header">
+                  <i className="fa fa-euro-sign pd-card-icon" />
+                  <span>Financials</span>
+                </div>
+                <div className="pd-fields">
+                  <div className="pd-field">
+                    <span className="pd-label">Price</span>
+                    <span className="pd-value pd-price">{getValue(product.price)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Budget No</span>
+                    <span className="pd-value">{getValue(product.budgetno)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Order Date</span>
+                    <span className="pd-value">{formatDate(product.orderdate, "DD-MM-YYYY")}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Expiry Date</span>
+                    <span className="pd-value pd-expiry">{formatDate(product.expirydate, "DD-MM-YYYY")}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ownership */}
+              <div className="pd-card">
+                <div className="pd-card-header">
+                  <i className="fa fa-users pd-card-icon" />
+                  <span>Ownership</span>
+                </div>
+                <div className="pd-fields">
+                  <div className="pd-field">
+                    <span className="pd-label">Group Name</span>
+                    <span className="pd-value">{getValue(product.groupName)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Added By</span>
+                    <span className="pd-value">{getValue(product.addedby)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">Shared</span>
+                    <span className={`pd-value pd-shared ${product.shared ? "pd-shared-yes" : "pd-shared-no"}`}>
+                      {product.shared ? "Yes" : "No"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Attachment — full width */}
+              <div className="pd-card pd-card-full">
+                <div className="pd-card-header">
+                  <i className="fa fa-paperclip pd-card-icon" />
+                  <span>Attachment</span>
+                </div>
+                <div className="pd-attachment">
+                  {product.filename || product.fileName ? (
+                    <>
+                      <i className="fa fa-file-pdf pd-file-icon" />
+                      <span className="pd-filename">{product.filename || product.fileName}</span>
+                      <button className="pd-btn pd-btn-outline pd-btn-sm" onClick={handleDownloadAttachment}>
+                        <i className="fa fa-download me-1" /> Download
+                      </button>
+                    </>
+                  ) : (
+                    <span className="pd-no-file">No attachment</span>
+                  )}
+                </div>
+              </div>
+
+            </div>
           </div>
 
         </>
@@ -648,7 +753,7 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Order">
         <ReusableForm
-          formConfig={addOrderProdFormConfig(budget || [], companyOptions)}
+          formConfig={addOrderProdFormConfig(budget || [], effectiveCompanyOptions)}
           initialValues={order || {}}
           onSubmit={handleOrderSubmit}
           onFieldChange={handleCompanyFieldChange}

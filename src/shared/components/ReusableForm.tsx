@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import InputField from "./InputField";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
+// Lazy load ReactQuill to avoid bundling issues
+const ReactQuill = lazy(() => import("react-quill").then(m => ({ default: m.default })));
+import "quill/dist/quill.snow.css";
 
 type FormField = {
   options?: any[];
@@ -12,6 +13,7 @@ type FormField = {
   multiple?: boolean;
   accept?: string;
   maxFiles?: number;
+  helpText?: string;
 
   validation?: {
     required?: boolean;
@@ -25,6 +27,7 @@ type FormField = {
   };
 
   breakAfter?: boolean;
+  colSize?: string;
 };
 
 type FormProps = {
@@ -33,6 +36,7 @@ type FormProps = {
   onSubmit: (formData: Record<string, any>) => void;
   disabled?: boolean;
   onFieldChange?: (id: string, value: any) => Partial<Record<string, any>> | void;
+  existingFileNames?: Record<string, string>;
 };
 
 const ReusableForm: React.FC<FormProps> = ({
@@ -41,9 +45,11 @@ const ReusableForm: React.FC<FormProps> = ({
   onSubmit,
   disabled = false,
   onFieldChange,
+  existingFileNames = {},
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [removedFiles, setRemovedFiles] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setFormData(initialValues);
@@ -95,6 +101,8 @@ const ReusableForm: React.FC<FormProps> = ({
     e.preventDefault();
     if (disabled) return;
 
+    console.log("🔍 ReusableForm submit - full formData:", JSON.stringify(formData, null, 2));
+
     const newErrors: Record<string, string> = {};
 
     formConfig.forEach(({ id, validation, showIf }) => {
@@ -112,11 +120,11 @@ const ReusableForm: React.FC<FormProps> = ({
       return;
     }
 
-    await onSubmit(formData);
+    await onSubmit({ ...formData, _removedFiles: removedFiles });
   };
 
   return (
-    <form className="row gy-2 align-items-center" onSubmit={handleSubmit}>
+    <form className="rf-form row gy-3 align-items-start" onSubmit={handleSubmit}>
       {formConfig.map((field) => {
         const shouldShow =
           !field.showIf ||
@@ -135,6 +143,15 @@ const ReusableForm: React.FC<FormProps> = ({
                   {formData[field.id]?.length || 0} /{" "}
                   {field.maxFiles || 5})
                 </label>
+
+                {field.helpText && (
+                  <div
+                    className="fw-bold mb-2"
+                    style={{ color: "#0d6efd" }}
+                  >
+                    {field.helpText}
+                  </div>
+                )}
 
                 <input
                   key={formData[field.id]?.length} // ✅ reset input
@@ -157,6 +174,25 @@ const ReusableForm: React.FC<FormProps> = ({
                     handleFileChange(files, field);
                   }}
                 />
+
+                {/* ✅ EXISTING SERVER FILE */}
+                {existingFileNames[field.id] && !formData[field.id]?.length && !removedFiles[field.id] && (
+                  <div className="mt-2 d-flex align-items-center gap-2">
+                    <span className="text-muted" style={{ fontSize: "0.85rem" }}>Current file:</span>
+                    <span className="text-primary fw-semibold" style={{ fontSize: "0.85rem" }}>{existingFileNames[field.id]}</span>
+                    {!disabled && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        style={{ fontSize: "0.75rem", padding: "1px 6px" }}
+                        onClick={() => setRemovedFiles(prev => ({ ...prev, [field.id]: true }))}
+                        title="Remove current file"
+                      >
+                        ✕ Remove
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* ✅ FILE LIST */}
                 {formData[field.id]?.length > 0 && (
@@ -206,14 +242,16 @@ const ReusableForm: React.FC<FormProps> = ({
                 <label className="col-form-label label">
                   {field.label}
                 </label>
-                <ReactQuill
-                  theme="snow"
-                  value={formData[field.id] || ""}
-                  onChange={(value) =>
-                    handleChange(field.id, value)
-                  }
-                  readOnly={disabled}
-                />
+                <Suspense fallback={<div>Loading editor...</div>}>
+                  <ReactQuill
+                    theme="snow"
+                    value={formData[field.id] || ""}
+                    onChange={(value: string) =>
+                      handleChange(field.id, value)
+                    }
+                    readOnly={disabled}
+                  />
+                </Suspense>
                 {errors[field.id] && (
                   <div className="text-danger">
                     {errors[field.id]}
@@ -237,6 +275,7 @@ const ReusableForm: React.FC<FormProps> = ({
                   onChange={handleChange}
                   isLoggedIn={true}
                   totalFields={formConfig.length}
+                  colSize={field.colSize}
                   disabled={disabled}
                 />
             )}
@@ -250,21 +289,21 @@ const ReusableForm: React.FC<FormProps> = ({
       })}
 
       {/* ✅ FIXED BUTTON AREA */}
-      <div className="col-12 btnWrapper">
+      <div className="col-12 rf-btn-area">
         <button
           type="submit"
-          className="btn btn-color"
+          className="rf-btn-submit"
           disabled={disabled}
         >
-          Submit
+          <i className="fa fa-check me-2" />Submit
         </button>
 
         <button
           type="button"
-          className="btn btn-secondary"
+          className="rf-btn-reset"
           onClick={() => setFormData(initialValues)}
         >
-          Reset
+          <i className="fa fa-refresh me-2" />Reset
         </button>
       </div>
     </form>
