@@ -109,7 +109,7 @@ const addProductFormConfig = (
   },
   {
       id: "attachment",
-      label: "Attachment",
+      label: "Attachment of quotes or promo codes/discounts/further info",
       type: "file",
       validation: { required: false },
   },
