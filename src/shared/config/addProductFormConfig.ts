@@ -109,7 +109,7 @@ const addProductFormConfig = (
   },
   {
       id: "attachment",
-      label: "Please upload SDS in DE and/or EN here",
+      label: "Attachment of quotes or promo codes/discounts/further info",
       type: "file",
       validation: { required: false },
   },

@@ -133,9 +133,9 @@ const addOrderFormConfig = (
 //   },
     {
       id: "attachment",
-      label: "Please upload SDS in DE and/or EN here",
+      label: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year",
       type: "file",
-      helpText: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year”",
+      //helpText: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year”",
       validation: { required: false },
   },
 ];
