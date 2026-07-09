@@ -336,9 +336,17 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
 
     // ReusableForm stores files as File[] — extract the first element
     const rawAttachment = formValues.attachment;
-    const file: File | null = Array.isArray(rawAttachment) && rawAttachment.length > 0
-      ? rawAttachment[0]
-      : rawAttachment instanceof File ? rawAttachment : null;
+   let filesArray: File[] = [];
+    if (Array.isArray(rawAttachment)) {
+      filesArray = rawAttachment;
+    } else if (rawAttachment instanceof File) {
+      filesArray = [rawAttachment];
+    }
+   
+   
+    /// const file: File | null = Array.isArray(rawAttachment) && rawAttachment.length > 0
+     // ? rawAttachment[0]
+      //: rawAttachment instanceof File ? rawAttachment : null;
 
     // ✅ Remove from object
     delete formValues.attachment;
@@ -348,14 +356,16 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
 
     // VERY IMPORTANT ✅
     payload.append("inventory", JSON.stringify(formValues));
-
-    if (file) {
-      payload.append("file", file, file.name);
-    }
+filesArray.forEach((file) => {
+      payload.append("file", file, file.name); // Sends all files to the backend
+    });
+   // if (file) {
+    //  payload.append("file", file, file.name);
+    //}
 
     console.log("🚀 Final Payload:");
     console.log("inventory:", JSON.stringify(formValues));
-    console.log("file:", file);
+    console.log("file:", filesArray );
 
     await dispatch(addProduct(payload)).unwrap();
 
@@ -399,6 +409,7 @@ const normalizeKeysAndFixSpelling = (
 
       // ✅ Handle fileName column with clickable link
       if (normalizedKey.toLowerCase() === "filename") {
+        
         normalizedItem[normalizedKey] = value ? (
           <a
             href="#"

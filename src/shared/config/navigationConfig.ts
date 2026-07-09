@@ -66,7 +66,7 @@ const navigationConfig = [
         title: 'Administration',
         link: '/administration',
         description: 'Manage lookup tables: H-Phrases, P-Phrases, Companies, Storage Locations.',
-        roles: ['admin', 'labMgmt'],
+        roles: ['admin', 'labMgmt', 'purchase department'], 
     },
 ];
 

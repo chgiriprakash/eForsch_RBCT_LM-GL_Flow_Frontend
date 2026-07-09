@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch } from "../../../shared/hooks/useAppDispatch";
+import { useAppSelector } from "../../../shared/hooks/customHooks"; 
 import {
   getHPhrases, createHPhrase, updateHPhrase, deleteHPhrase,
   getPPhrases, createPPhrase, updatePPhrase, deletePPhrase,
@@ -19,6 +20,24 @@ const emptyStorage = { storageLocation: "" };
 
 const Administration = () => {
   const dispatch = useAppDispatch();
+  const auth = useAppSelector((state: any) => state.auth);
+const reduxUser = auth?.user;
+
+const user = (() => {
+  if (reduxUser) return reduxUser;
+  const storedUser = localStorage.getItem('user');
+  return storedUser ? JSON.parse(storedUser) : null;
+})();
+  // Grab user role from the Redux store
+  const userRole = user?.role; 
+  
+  // Standardize string to lowercase to completely prevent accidental case mismatch bugs
+  const cleanRole = userRole?.toLowerCase()?.trim() || "";
+  
+  // Roles flags
+  const isSuperUser = cleanRole === "admin" || cleanRole === "lab management" || cleanRole === "labmgmt";
+  const isPurchaseDepartment = cleanRole === "purchase department";
+
   const [activeTab, setActiveTab] = useState<TabType>("hphrases");
 
   // Data states
@@ -32,6 +51,18 @@ const Administration = () => {
   const [editingRow, setEditingRow] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
   const [saving, setSaving] = useState(false);
+
+  // Permission Evaluator Rule Engine
+  const hasEditPermission = () => {
+    // Admin & Lab Management can edit absolutely everything
+    if (isSuperUser) return true;
+
+    // Purchase Department can ONLY modify the Companies tab
+    if (activeTab === "companies" && isPurchaseDepartment) return true;
+
+    // Default catch-all denies edit actions
+    return false; 
+  };
 
   // Load data
   const loadHPhrases = async () => {
@@ -53,6 +84,7 @@ const Administration = () => {
 
   // Open modal
   const openAdd = () => {
+    if (!hasEditPermission()) return;
     setEditingRow(null);
     setFormData(activeTab === "hphrases" || activeTab === "pphrases" ? { ...emptyPhrase }
       : activeTab === "companies" ? { ...emptyCompany }
@@ -61,6 +93,7 @@ const Administration = () => {
   };
 
   const openEdit = (row: any) => {
+    if (!hasEditPermission()) return;
     setEditingRow(row);
     setFormData({ ...row });
     setShowModal(true);
@@ -68,6 +101,7 @@ const Administration = () => {
 
   // Save
   const handleSave = async () => {
+    if (!hasEditPermission()) return;
     setSaving(true);
     try {
       if (activeTab === "hphrases") {
@@ -98,6 +132,7 @@ const Administration = () => {
 
   // Delete
   const handleDelete = async (id: number) => {
+    if (!hasEditPermission()) return;
     if (!window.confirm("Are you sure you want to delete this record?")) return;
     try {
       if (activeTab === "hphrases") { await dispatch(deleteHPhrase(id)).unwrap(); await loadHPhrases(); }
@@ -118,6 +153,8 @@ const Administration = () => {
   ];
 
   const renderTable = () => {
+    const canModify = hasEditPermission();
+
     if (activeTab === "hphrases" || activeTab === "pphrases") {
       const rows = activeTab === "hphrases" ? hPhrases : pPhrases;
       return (
@@ -126,24 +163,26 @@ const Administration = () => {
             <tr>
               <th style={{ width: "120px" }}>Code</th>
               <th>Description</th>
-              <th style={{ width: "120px" }}>Actions</th>
+              {canModify && <th style={{ width: "120px" }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={3} style={{ textAlign: "center" }}>No records found</td></tr>
+              <tr><td colSpan={canModify ? 3 : 2} style={{ textAlign: "center" }}>No records found</td></tr>
             ) : rows.map((row) => (
               <tr key={row.id}>
                 <td><strong>{row.phraseCode}</strong></td>
                 <td>{row.phraseDescription}</td>
-                <td>
-                  <button className="btn btn-sm btn-color me-1" onClick={() => openEdit(row)}>
-                    <i className="fa fa-pencil" />
-                  </button>
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(row.id)}>
-                    <i className="fa fa-trash" />
-                  </button>
-                </td>
+                {canModify && (
+                  <td>
+                    <button className="btn btn-sm btn-color me-1" onClick={() => openEdit(row)}>
+                      <i className="fa fa-pencil" />
+                    </button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(row.id)}>
+                      <i className="fa fa-trash" />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -156,26 +195,28 @@ const Administration = () => {
         <table className="dynamic-table">
           <thead>
             <tr>
-              <th style={{ width: "150px" }}>Company No</th>
+              <th style={{ width: "150px" }}>Internal Number</th>
               <th>Company Name</th>
-              <th style={{ width: "120px" }}>Actions</th>
+              {canModify && <th style={{ width: "120px" }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {companies.length === 0 ? (
-              <tr><td colSpan={3} style={{ textAlign: "center" }}>No records found</td></tr>
+              <tr><td colSpan={canModify ? 3 : 2} style={{ textAlign: "center" }}>No records found</td></tr>
             ) : companies.map((row) => (
               <tr key={row.id}>
                 <td>{row.companyNo}</td>
                 <td>{row.companyName}</td>
-                <td>
-                  <button className="btn btn-sm btn-color me-1" onClick={() => openEdit(row)}>
-                    <i className="fa fa-pencil" />
-                  </button>
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(row.id)}>
-                    <i className="fa fa-trash" />
-                  </button>
-                </td>
+                {canModify && (
+                  <td>
+                    <button className="btn btn-sm btn-color me-1" onClick={() => openEdit(row)}>
+                      <i className="fa fa-pencil" />
+                    </button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(row.id)}>
+                      <i className="fa fa-trash" />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -189,23 +230,25 @@ const Administration = () => {
           <thead>
             <tr>
               <th>Storage Location</th>
-              <th style={{ width: "120px" }}>Actions</th>
+              {canModify && <th style={{ width: "120px" }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {storageLocations.length === 0 ? (
-              <tr><td colSpan={2} style={{ textAlign: "center" }}>No records found</td></tr>
+              <tr><td colSpan={canModify ? 2 : 1} style={{ textAlign: "center" }}>No records found</td></tr>
             ) : storageLocations.map((row) => (
               <tr key={row.id}>
                 <td>{row.storageLocation}</td>
-                <td>
-                  <button className="btn btn-sm btn-color me-1" onClick={() => openEdit(row)}>
-                    <i className="fa fa-pencil" />
-                  </button>
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(row.id)}>
-                    <i className="fa fa-trash" />
-                  </button>
-                </td>
+                {canModify && (
+                  <td>
+                    <button className="btn btn-sm btn-color me-1" onClick={() => openEdit(row)}>
+                      <i className="fa fa-pencil" />
+                    </button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(row.id)}>
+                      <i className="fa fa-trash" />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -237,7 +280,7 @@ const Administration = () => {
       return (
         <>
           <div className="mb-3">
-            <label className="form-label label">Company No <span className="text-danger">*</span></label>
+            <label className="form-label label">Internal Number <span className="text-danger">*</span></label>
             <input className="input form-control" type="text" value={formData.companyNo || ""}
               onChange={(e) => setFormData({ ...formData, companyNo: e.target.value })}
               placeholder="e.g. 700597" />
@@ -299,9 +342,11 @@ const Administration = () => {
         <h6 className="mb-0" style={{ color: "#333", fontWeight: 600 }}>
           Manage {getTabTitle()}
         </h6>
-        <button className="btn btn-color btn-sm" onClick={openAdd}>
-          <i className="fa fa-plus me-1" /> Add {getTabTitle().replace(/s$/, "")}
-        </button>
+        {hasEditPermission() && (
+          <button className="btn btn-color btn-sm" onClick={openAdd}>
+            <i className="fa fa-plus me-1" /> Add {getTabTitle().replace(/s$/, "")}
+          </button>
+        )}
       </div>
 
       {/* Table */}

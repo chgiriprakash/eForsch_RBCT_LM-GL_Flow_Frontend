@@ -215,7 +215,13 @@ const Orders = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [deliveryModal, setDeliveryModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
   const [deliveryForm, setDeliveryForm] = useState({ storageLocation: "", orderType: "bulk", barcodeInfo: "" });
+ 
+ const [generalDeliveryModal, setGeneralDeliveryModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
+  const [generalDeliveryTextField, setGeneralDeliveryTextField] = useState("");
+  
   const [viewOrderModal, setViewOrderModal] = useState<{ open: boolean; order: any | null }>({ open: false, order: null });
+  
+  
   console.log("groupOptions:", groupOptions);
   
   console.log("selectedOrder:", selectedOrder);
@@ -558,7 +564,9 @@ const enhanceList = (list: Order[], userRole: any) => {
             ) : (
               <button
                 className="btn-color upload-wrapper btn btn-danger"
-                onClick={() => handleOrder(item, "Delivered", {})}
+               
+               onClick={() => { setGeneralDeliveryModal({ open: true, order: item }); setGeneralDeliveryTextField(""); }}
+                // onClick={() => handleOrder(item, "Delivered", {})}
               >
                 Delivered
               </button>
@@ -1357,6 +1365,52 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                 }}
               >
                 Yes, Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🟢 ADD THIS GENERAL DELIVERY MODAL POPUP HERE */}
+      {generalDeliveryModal.open && (
+        <div className="reject-modal-overlay">
+          <div className="reject-modal">
+            <h5 className="reject-modal-title">
+              <i className="fa fa-truck me-2 text-success" />
+              General Inventory Delivery Log
+            </h5>
+            
+            <div className="reject-modal-field">
+              <label className="reject-modal-label">Storage Location<span className="text-danger">*</span></label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Enter tracking reference, room target or comments..."
+                value={generalDeliveryTextField}
+                onChange={(e) => setGeneralDeliveryTextField(e.target.value)}
+                style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e0e6ef", fontSize: "14px" }}
+              />
+            </div>
+            <div className="reject-modal-actions">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setGeneralDeliveryModal({ open: false, order: null })}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-success"
+                disabled={!generalDeliveryTextField.trim()}
+                onClick={async () => {
+                  if (generalDeliveryModal.order) {
+                    await handleOrder(generalDeliveryModal.order, "Delivered", {
+                      barcodeInfo: generalDeliveryTextField
+                    });
+                    setGeneralDeliveryModal({ open: false, order: null });
+                  }
+                }}
+              >
+                Confirm Delivery
               </button>
             </div>
           </div>

@@ -46,7 +46,7 @@ const DashRoutes = () => (
       <Route
         path="users"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'groupleader', 'labMgmt']}>
+          <ProtectedRoute allowedRoles={['admin', 'groupleader', 'labmgmt', 'lab management']}>
             <Users />
           </ProtectedRoute>
         }
@@ -104,11 +104,11 @@ const DashRoutes = () => (
         <Route path="projects-archives" element={<ProjectArchives />} />
       </Route>
 
-      {/* Administration (Admin and Lab Management) */}
+      {/* Administration (Admin, Lab Management, Purchase Department) */}
       <Route
         path="administration"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'labMgmt']}>
+          <ProtectedRoute allowedRoles={['admin','lab management','labmgmt','purchase department']}>
             <Administration />
           </ProtectedRoute>
         }
