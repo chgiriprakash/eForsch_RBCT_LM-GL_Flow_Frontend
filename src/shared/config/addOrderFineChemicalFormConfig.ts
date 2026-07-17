@@ -141,15 +141,17 @@ const addOrderFineChemicalFormConfig = (
     {
         id: "hPhrases",
         label: "H-Phrases",
-        type: "typeahead",
+        type: "multiselect",
         options: hPhraseOptions,
+        placeholder: "Select H Phrases...",
         validation: { required: true },
     },
     {
         id: "pPhrases",
         label: "P-Phrases",
-        type: "typeahead",
+        type: "multiselect",
         options: pPhraseOptions,
+        placeholder: "Select P Phrases...",
         validation: { required: true },
     },
     {

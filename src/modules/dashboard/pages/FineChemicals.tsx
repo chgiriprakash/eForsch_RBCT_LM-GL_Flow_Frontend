@@ -47,8 +47,8 @@ export interface Product {
   skinResorptive: string;
   ghsSymbols: string[];
   ghsSignalWord: string[];
-  hPhrases: string;
-  pPhrases: string;
+  hPhrases: string | string[];
+  pPhrases: string | string[];
   substitutionCheck: string;
   substitution?: string;
   substitutionOption?: string;
@@ -109,8 +109,8 @@ const initialProductData: Product = {
   skinResorptive: "",
   ghsSymbols: [],
   ghsSignalWord: [],
-  hPhrases: "",
-  pPhrases: "",
+  hPhrases: [],
+  pPhrases: [],
   substitutionCheck: "",
   substitutionOption: "",
   storageLocation: "",
@@ -368,6 +368,15 @@ const openProductDetails = (row: any) => {
     formData.hazardousSubstance = formData.hazardousSubstance === "Yes";
     formData.cmrSubstance = formData.cmrSubstance === "Yes";
     formData.skinResorptive = formData.skinResorptive === "Yes";
+
+// 🔄 Convert array selections to strings if they are arrays (comma-separated value string matching backend setup)
+      if (Array.isArray(formData.hPhrases)) {
+        formData.hPhrases = JSON.stringify(formData.hPhrases); 
+        // Note: If backend expects JSON structure use: JSON.stringify(formData.hPhrases)
+      }
+      if (Array.isArray(formData.pPhrases)) {
+        formData.pPhrases = JSON.stringify(formData.pPhrases);
+      }
 
     // ✅ Add user details from localStorage
     if (userRole.role?.toLowerCase() === "labmgmt" || userRole.role?.toLowerCase() === "labmanager") {

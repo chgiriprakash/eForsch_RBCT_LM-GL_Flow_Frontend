@@ -22,6 +22,7 @@ interface InputFieldProps {
   isLoggedIn?: boolean;
   totalFields?: number;
   colSize?: string;
+  multiple?: boolean;
 }
 
 const ghsImageMap: Record<string, string> = {
@@ -37,50 +38,79 @@ const ghsImageMap: Record<string, string> = {
 
 const TypeaheadField: React.FC<{
   id: string;
-  value: string;
+  value: any;
   options: OptionType[];
-  onChange: (val: string) => void;
+  onChange: (val: any) => void;
   disabled?: boolean;
   error?: string;
-}> = ({ id, value, options, onChange, disabled, error }) => {
-  const [query, setQuery] = useState(value);
-  const [locked, setLocked] = useState(false);
+  multiple?: boolean;
+}> = ({ id, value, options, onChange, disabled, error, multiple }) => {
+  const [query, setQuery] = useState(typeof value === "string" ? value : "");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  useEffect(() => { setQuery(value); }, [value]);
+  const selectedItems: string[] = Array.isArray(value)
+    ? value
+    : value
+    ? [value]
+    : [];
+
+  useEffect(() => { 
+    if (!multiple) {
+      setQuery(value || "");
+    }
+  }, [value, multiple]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
+        if (multiple) setQuery("");
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [multiple]);
 
   const getLabel = (opt: OptionType) => typeof opt === "string" ? opt : opt.label;
   const getKey   = (opt: OptionType) => typeof opt === "string" ? opt : opt.key;
 
-  const filtered = options.filter(Boolean).filter((opt) =>
-    getLabel(opt).toLowerCase().includes(query.toLowerCase())
-  );
+  const filtered = options
+    .filter(Boolean)
+    .filter((opt) => !multiple || !selectedItems.includes(getKey(opt)))
+    .filter((opt) => {
+      const searchString = typeof query === "string" ? query : "";
+      return getLabel(opt).toLowerCase().includes(searchString.toLowerCase());
+    });
 
-  const handleClear = () => {
+  const handleClearSingle = () => {
     setQuery("");
-    setLocked(false);
     setOpen(false);
     setActiveIndex(-1);
     onChange("");
   };
 
+  const removeMultiItem = (itemToRemove: string) => {
+    const updated = selectedItems.filter((item) => item !== itemToRemove);
+    onChange(updated);
+  };
+
   const selectOption = (opt: OptionType) => {
-    onChange(getKey(opt));
-    setQuery(getLabel(opt));
-    setLocked(true);
+    const selectedKey = getKey(opt);
+
+    if (multiple) {
+      if (!selectedItems.includes(selectedKey)) {
+        const updated = [...selectedItems, selectedKey];
+        onChange(updated);
+      }
+      setQuery(""); 
+    } else {
+      setQuery(getLabel(opt));
+      onChange(selectedKey);
+    }
+
     setOpen(false);
     setActiveIndex(-1);
   };
@@ -106,40 +136,90 @@ const TypeaheadField: React.FC<{
     }
   };
 
+  const isLocked = !multiple && selectedItems.length > 0;
+
   return (
-    <div ref={containerRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: 6 }}>
-      <input
-        id={id}
-        type="text"
-        value={query}
-        disabled={disabled}
-        readOnly={locked}
-        autoComplete="off"
-        placeholder="Type to search..."
-        className={`input ${error ? "errorInput" : ""} ${locked ? "typeahead-locked" : ""}`}
-        style={{ flex: 1 }}
-        onChange={(e) => { setQuery(e.target.value); setOpen(true); setActiveIndex(-1); onChange(e.target.value); }}
-        onFocus={() => { if (!locked) setOpen(true); }}
-        onKeyDown={handleKeyDown}
-      />
-      {locked && !disabled && (
-        <button type="button" className="typeahead-clear" onClick={handleClear} title="Clear selection">
-          ×
-        </button>
+    <div ref={containerRef} style={{ display: "flex", flexDirection: "column", gap: 4, width: "100%" }}>
+      
+      {/* 🔮 MULTI-SELECT VISUAL BADGES */}
+      {multiple && selectedItems.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "4px" }}>
+          {selectedItems.map((itemKey) => {
+            // Find matched option mapping object to display full label descriptive text cleanly
+            const matchingOpt = options.find(o => getKey(o) === itemKey);
+            const labelText = matchingOpt ? getLabel(matchingOpt) : itemKey;
+            return (
+              <span 
+                key={itemKey} 
+                style={{ 
+                  display: "inline-flex", 
+                  alignItems: "center", 
+                  background: "#e9ecef", 
+                  borderRadius: "4px", 
+                  padding: "2px 8px", 
+                  fontSize: "12px",
+                  color: "#495057",
+                  border: "1px solid #ced4da"
+                }}
+              >
+                {labelText}
+                {!disabled && (
+                  <button
+                    type="button"
+                    onClick={() => removeMultiItem(itemKey)}
+                    style={{ 
+                      background: "none", 
+                      border: "none", 
+                      marginLeft: "6px", 
+                      cursor: "pointer", 
+                      color: "#dc3545", 
+                      fontWeight: "bold",
+                      padding: 0
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </span>
+            );
+          })}
+        </div>
       )}
-      {open && !locked && filtered.length > 0 && (
-        <ul className="typeahead-dropdown" ref={listRef}>
-          {filtered.map((opt, idx) => (
-            <li
-              key={getKey(opt)}
-              className={`typeahead-option ${idx === activeIndex ? "typeahead-option-active" : ""}`}
-              onMouseDown={() => selectOption(opt)}
-            >
-              {getLabel(opt)}
-            </li>
-          ))}
-        </ul>
-      )}
+
+      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 6, width: "100%" }}>
+        <input
+          id={id}
+          type="text"
+          value={typeof query === "string" ? query : ""}
+          disabled={disabled}
+          readOnly={isLocked}
+          autoComplete="off"
+          placeholder={multiple ? "Type to add multiple..." : "Type to search..."}
+          className={`input ${error ? "errorInput" : ""} ${isLocked ? "typeahead-locked" : ""}`}
+          style={{ flex: 1 }}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); setActiveIndex(-1); if(!multiple) onChange(e.target.value); }}
+          onFocus={() => { if (!isLocked) setOpen(true); }}
+          onKeyDown={handleKeyDown}
+        />
+        {isLocked && !disabled && (
+          <button type="button" className="typeahead-clear" onClick={handleClearSingle} title="Clear selection">
+            ×
+          </button>
+        )}
+        {open && !isLocked && filtered.length > 0 && (
+          <ul className="typeahead-dropdown" ref={listRef}>
+            {filtered.map((opt, idx) => (
+              <li
+                key={getKey(opt)}
+                className={`typeahead-option ${idx === activeIndex ? "typeahead-option-active" : ""}`}
+                onMouseDown={() => selectOption(opt)}
+              >
+                {getLabel(opt)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 };
@@ -156,6 +236,7 @@ const InputField: React.FC<InputFieldProps> = ({
   isLoggedIn,
   totalFields,
   colSize,
+  multiple,
 }) => {
   const columnClass =
     colSize
@@ -186,7 +267,6 @@ const InputField: React.FC<InputFieldProps> = ({
     onChange(id, newValue);
   };
 
-  // ✅ FIX: prevent crash if option is null
   const renderOption = (option: OptionType | null | undefined) => {
     if (!option) return null;
 
@@ -220,8 +300,6 @@ const InputField: React.FC<InputFieldProps> = ({
           disabled={disabled}
         >
           <option value="">Select...</option>
-
-          {/* ✅ FIX: filter null values */}
           {(options || []).filter(Boolean).map(renderOption)}
         </select>
       ) : type === "checkbox" ? (
@@ -266,8 +344,6 @@ const InputField: React.FC<InputFieldProps> = ({
                   disabled={disabled}
                   className="checkbox-img"
                 />
-
-                {/* ✅ RESTORED GHS IMAGE SUPPORT */}
                 {ghsImageMap[val] ? (
                   <img
                     src={ghsImageMap[val]}
@@ -296,7 +372,7 @@ const InputField: React.FC<InputFieldProps> = ({
           style={{ resize: "vertical" }}
           onChange={(e) => onChange(id, e.target.value)}
         />
-      ) : type === "typeahead" ? (
+      ) : ((type as unknown as string) === "typeahead" || (type as unknown as string) === "multiselect") ? (
         <TypeaheadField
           id={id}
           value={value || ""}
@@ -304,6 +380,7 @@ const InputField: React.FC<InputFieldProps> = ({
           onChange={(val) => onChange(id, val)}
           disabled={disabled}
           error={error}
+          multiple={type === "multiselect" ? true : multiple}
         />
       ) : (
         <input

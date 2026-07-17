@@ -726,7 +726,11 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
       const apiName = (status === "Ordered") ? orderedPOD : deliveredPOD;
       const payload = status === "Ordered"
         ? { id: order.orderId, user }
-        : { id: order.orderId, user, orderType: extra?.orderType, barcodeInfo: extra?.barcodeInfo, storageLocation: extra?.storageLocation };
+        : { id: order.orderId, user,
+           ...(extra?.orderType && { orderType: extra?.orderType }),
+           ...(extra?.barcodeInfo && { barcodeInfo: extra?.barcodeInfo }),
+           ...(extra?.storageLocation && { storageLocation: extra?.storageLocation })
+         };
       await dispatch(apiName(payload)).unwrap();
       alert(`Order ${status} successfully!`);
       
@@ -770,6 +774,13 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
 
     return value.trim();
   };
+
+const normalizePhrases = (value: any): string => {
+      if (Array.isArray(value)) {
+        return value.join(", "); // Converts ["H200", "H310"] into "H200, H310"
+      }
+      return normalizeString(value);
+    };
 
   const normalizeApproveBool = (value: any, key?: string): boolean => {
     // ✅ Handle undefined/null
@@ -831,8 +842,8 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
     ghsSymbols: normalizeArray(formData.ghsSymbols),
     ghsCheckbox: normalizeString(formData.ghsCheckbox),
     ghsSignalWord: normalizeArray(formData.ghsSignalWord || formData.ghssignalword),
-    hPhrases: normalizeString(formData.hPhrases || formData.gethPhrases),
-    pPhrases: normalizeString(formData.pPhrases || formData.getpPhrases),
+    hPhrases: normalizePhrases(formData.hPhrases || formData.gethPhrases),
+    pPhrases: normalizePhrases(formData.pPhrases || formData.getpPhrases),
     substitutionCheck: normalizeString(formData.substitutionCheck),
     substitutionOption: normalizeString(formData.substitutionOption),
     storageLocation: normalizeString(formData.storageLocation),
@@ -1078,7 +1089,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
         <ReusableForm
           formConfig={
             isFineChemical(selectedOrder)
-              ? UpdateOrderFormConfigFine(budget || [], companyOptions, storageLocationOptions)
+              ? UpdateOrderFormConfigFine(budget || [], companyOptions, storageLocationOptions,hPhraseOptions, pPhraseOptions)
               : UpdateOrderFormConfig(budget || [], companyOptions)
           }
           initialValues={selectedOrder || {}}
@@ -1407,6 +1418,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                       barcodeInfo: generalDeliveryTextField
                     });
                     setGeneralDeliveryModal({ open: false, order: null });
+                  setGeneralDeliveryTextField("");
                   }
                 }}
               >

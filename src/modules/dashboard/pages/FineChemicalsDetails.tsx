@@ -21,7 +21,21 @@ import {
 } from "../dashboardSlice";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
-
+const getPhraseList = (phrases: any): string[] => {
+  if (Array.isArray(phrases)) {
+    return phrases;
+  }
+  if (typeof phrases === "string") {
+    const trimmed = phrases.trim();
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        return JSON.parse(trimmed);
+      } catch (e) {}
+    }
+    return trimmed.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+};
 const FineChemicalsDetails = () => {
   const userRole = JSON.parse(localStorage.getItem("user") || "{}");
   const navigate = useNavigate();
@@ -109,7 +123,10 @@ const FineChemicalsDetails = () => {
           /* ignore invalid JSON */
         }
       }
-
+     if (normalizedKey === "hPhrases" || normalizedKey === "pPhrases")
+      {
+        value = getPhraseList(value);
+      }
       if (value === "true") value = "Yes";
       if (value === "false") value = "No";
 
@@ -142,8 +159,8 @@ const FineChemicalsDetails = () => {
     orderedby: product.orderedby || userRole?.name || "",
     ghsSymbols: product.ghsSymbols || [],
     ghsSignalWord: product.ghsSignalWord || [],
-    hPhrases: product.hPhrases || "",
-    pPhrases: product.pPhrases || "",
+    hPhrases: getPhraseList(product.hPhrases),
+    pPhrases: getPhraseList(product.pPhrases),
     substitutionCheck: product.substitutionCheck || "",
     substitutionOption: product.substitutionOption || "",
     filename: product.filename || "",
@@ -194,8 +211,8 @@ const FineChemicalsDetails = () => {
         : typeof product.ghsSignalWord === "string"
         ? [product.ghsSignalWord]
         : [],
-      hPhrases: product.hPhrases || "",
-      pPhrases: product.pPhrases || "",
+      hPhrases: getPhraseList(product.hPhrases),
+      pPhrases: getPhraseList(product.pPhrases),
       substitutionCheck: product.substitutionCheck || "",
       substitutionOption: product.substitutionOption || "",
       storageLocation: product.storageLocation || "",
@@ -790,23 +807,47 @@ const FineChemicalsDetails = () => {
                 <div className="pd-fields">
                   <div className="pd-field">
                     <span className="pd-label">H-Phrases</span>
-                    <span className="pd-value">
-                      {product.hPhrases ? (
-                        <><strong>{product.hPhrases}</strong>
-                          {hPhraseMap[product.hPhrases] && <span style={{ color: "#555", marginLeft: "8px" }}>— {hPhraseMap[product.hPhrases]}</span>}
-                        </>
-                      ) : "-"}
-                    </span>
+                    <span className="pd-value" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+  {(() => {
+    const hPhrasesList = getPhraseList(product.hPhrases);
+    return hPhrasesList.length > 0 ? (
+      hPhrasesList.map((code: string, idx: number) => (
+        <div key={idx} style={{ margin: 0, padding: 0 }}>
+          <strong>{code}</strong>
+          {hPhraseMap[code] && (
+            <span style={{ color: "#555", marginLeft: "8px" }}>
+              — {hPhraseMap[code]}
+            </span>
+          )}
+        </div>
+      ))
+    ) : (
+      "-"
+    );
+  })()}
+</span>
                   </div>
                   <div className="pd-field">
                     <span className="pd-label">P-Phrases</span>
-                    <span className="pd-value">
-                      {product.pPhrases ? (
-                        <><strong>{product.pPhrases}</strong>
-                          {pPhraseMap[product.pPhrases] && <span style={{ color: "#555", marginLeft: "8px" }}>— {pPhraseMap[product.pPhrases]}</span>}
-                        </>
-                      ) : "-"}
-                    </span>
+                    <span className="pd-value" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+  {(() => {
+    const pPhrasesList = getPhraseList(product.pPhrases);
+    return pPhrasesList.length > 0 ? (
+      pPhrasesList.map((code: string, idx: number) => (
+        <div key={idx} style={{ margin: 0, padding: 0 }}>
+          <strong>{code}</strong>
+          {pPhraseMap[code] && (
+            <span style={{ color: "#555", marginLeft: "8px" }}>
+              — {pPhraseMap[code]}
+            </span>
+          )}
+        </div>
+      ))
+    ) : (
+      "-"
+    );
+  })()}
+</span>
                   </div>
                   <div className="pd-field">
                     <span className="pd-label">Substitution Check</span>

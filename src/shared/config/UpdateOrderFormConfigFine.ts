@@ -2,6 +2,8 @@ const UpdateOrderFormConfigFine = (
   budgetOptions: string[],
   companyOptions: { label: string; key: string }[] = [],
   storageLocationOptions: string[] = [],
+  hPhraseOptions: any[]= [],
+  pPhraseOptions: any[]= []
 ) => [
   {
     id: "productName",
@@ -136,14 +138,20 @@ const UpdateOrderFormConfigFine = (
   {
     id: "hPhrases",
     label: "GHS H-Phrases",
-    type: "text",
+    type: "multiselect",
+    options: hPhraseOptions,
+    placeholder: "Select H Phrases...",
     validation: { required: false },
+    
   },
   {
     id: "pPhrases",
     label: "GHS P-Phrases",
-    type: "text",
+    type: "multiselect",
+    options: pPhraseOptions,
+    placeholder: "Select P Phrases...",
     validation: { required: false },
+    
   },
   {
     id: "substitutionCheck",

@@ -144,6 +144,7 @@ const addFineChemicalsFormConfig = (
     type: "typeahead",
     options: hPhraseOptions,
     validation: { required: true },
+    multiple: true, // Allow multiple selections
   },
   {
     id: "pPhrases",
@@ -151,6 +152,7 @@ const addFineChemicalsFormConfig = (
     type: "typeahead",
     options: pPhraseOptions,
     validation: { required: true },
+    multiple: true, // Allow multiple selections
   },
   {
     id: "substitutionCheck",

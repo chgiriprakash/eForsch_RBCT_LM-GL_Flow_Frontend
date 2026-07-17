@@ -152,6 +152,7 @@ export const deliveredPOD = createThunk(
     orderType?: string;
     barcodeInfo?: string;
     storageLocation?: string;
+    deliveryLog?: string;
   }) => {
     return axiosClient.post(`api/orders/delivered/${id}`, {
       email: user.email, name: user.name, role: user.role, groupName: user.groupName,

@@ -277,6 +277,7 @@ const ReusableForm: React.FC<FormProps> = ({
                   totalFields={formConfig.length}
                   colSize={field.colSize}
                   disabled={disabled}
+                  multiple={field.multiple}
                 />
             )}
 
