@@ -114,8 +114,8 @@ const initialData: Order = {
   updatedBy: "",
   groupName: "",
   inventoryType: "",
-  labApproved: false,
-  adminApproved: false,
+  labApproved: null as any,
+  adminApproved: null as any,
   companyInternalNo: "",
   weightvolsubqty: "",
   casnumber: "",
@@ -209,7 +209,7 @@ const Orders = () => {
   const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
   const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   const [storageLocationOptions, setStorageLocationOptions] = useState<string[]>([]);
-  const [hPhraseOptions, setHPhraseOptions] = useState<{ label: string; key: string }[]>([]);
+  const [hPhraseOptions , setHPhraseOptions] = useState<{ label: string; key: string }[]>([]);
   const [pPhraseOptions, setPPhraseOptions] = useState<{ label: string; key: string }[]>([]);
   const [rejectModal, setRejectModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
   const [rejectReason, setRejectReason] = useState("");
@@ -593,6 +593,7 @@ const enhanceList = (list: Order[], userRole: any) => {
     }
 
     if (role === "admin" || role === "groupleader") {
+      const isPendingGL = item.status?.toLowerCase() === "pending" && item.labApproved === true && item.adminApproved === null;
       const canAct = (role === "admin" || item.groupName === userRole.groupName) && !!item.labApproved;
 
       requestButtons = canAct ? (
@@ -600,20 +601,32 @@ const enhanceList = (list: Order[], userRole: any) => {
           <button
             className="btn-color upload-wrapper btn btn-primary"
             onClick={() => handleApproval(item, true)}
-            disabled={!!item.adminApproved}
+            //disabled={!!item.adminApproved}
           >
             Approve
           </button>
           <button
             className="btn-color upload-wrapper btn btn-danger"
             onClick={() => handleApproval(item, false)}
-            disabled={!!item.adminApproved}
+            //disabled={!!item.adminApproved}
           >
             Reject
           </button>
         </>
       ) : null;
     }
+const renderApprovalIcon = (val: boolean | null | undefined) => {
+      if (val === true) {
+        return <i className="fa fa-check-circle text-success"></i>;
+      }
+      if (item.status?.toLowerCase() === "pending") {
+        return "";
+      }
+      if (val === false) {
+        return <i className="fa fa-times-circle text-danger"></i>;
+      }
+      return ""; // Returns empty string if null, undefined, or pending
+    }; 
 
     return {
       ...item,
@@ -621,12 +634,15 @@ const enhanceList = (list: Order[], userRole: any) => {
       fileName: item.fileName ? item.fileName : <i className="fa fa-paperclip"></i>,
       // Fall back to creator for older orders saved without orderedby
       orderedby: item.orderedby || item.createdBy || item.addedby || "",
-      adminApproved: item.adminApproved
-        ? <i className="fa fa-check-circle text-success"></i>
-        : <i className="fa fa-times-circle text-danger"></i>,
-      labApproved: item.labApproved
-        ? <i className="fa fa-check-circle text-success"></i>
-        : <i className="fa fa-times-circle text-danger"></i>,
+      adminApproved: renderApprovalIcon(item.adminApproved),
+      //item.adminApproved
+       // ? <i className="fa fa-check-circle text-success"></i>
+        //: <i className="fa fa-times-circle text-danger"></i>,
+      labApproved: 
+      renderApprovalIcon(item.labApproved),
+      //item.labApproved
+        //? <i className="fa fa-check-circle text-success"></i>
+        //: <i className="fa fa-times-circle text-danger"></i>,
       _inventoryTypeRaw: typeof item.inventoryType === "string" ? item.inventoryType : "",
       inventoryType:
         item.inventoryType === "generalInventory"
@@ -654,36 +670,70 @@ const enhanceList = (list: Order[], userRole: any) => {
     }
   };
 
-  const openOrderDetails = (row: any) => {
-    const role = userRole?.role?.toLowerCase();
-    if (role === "labmgmt") {
-      // Find the raw order from origalData for full field access
-      const rawOrder = origalData?.list.find((o: any) => o.orderId === row.orderId) || row;
-      setViewOrderModal({ open: true, order: rawOrder });
-    } else {
-      // Use raw unenhanced data to get the filename (enhanceList overwrites some fields with JSX)
-      const rawRow = origalData?.list?.find((o: any) => o.orderId === row.orderId) || row;
-      const isLocked = row._labApprovedRaw === true || rawRow.labApproved === true || ["ordered", "delivered"].includes(rawRow.status?.toLowerCase());
+ const openOrderDetails = (row: any) => {
+  const role = userRole?.role?.toLowerCase();
 
-      if (isLocked) {
-        // Lab-approved order — show read-only card/grid view
-        // Merge _inventoryTypeRaw from enhanced row in case origalData lookup failed
-        const mergedRow = { ...rawRow, _inventoryTypeRaw: row._inventoryTypeRaw || rawRow.inventoryType || "" };
-        setViewOrderModal({ open: true, order: mergedRow });
-      } else {
-        // Not yet approved — show editable form
-        const existingFile =
-          (typeof rawRow.safetydatasheet === "string" && rawRow.safetydatasheet) ? rawRow.safetydatasheet :
-          (typeof rawRow.attachment === "string" && rawRow.attachment) ? rawRow.attachment :
-          (typeof rawRow.fileName === "string" && rawRow.fileName) ? rawRow.fileName :
-          null;
-        setSelectedOrder(mapFormDataToOrder(row, userRole));
-        setExistingAttachmentName(existingFile);
-        setIsOrderLocked(false);
-        setIsModalOpen(true);
-      }
+  // 1. Get raw unenhanced order data
+  const rawRow = origalData?.list?.find((o: any) => o.orderId === row.orderId) || row;
+  const statusLower = rawRow.status?.toLowerCase() || "";
+
+  // 2. Explicitly check if the order has been REJECTED
+  const isFulfilledOrRejected =
+    statusLower === "rejected" ||
+    statusLower === "ordered" ||
+    statusLower === "delivered" ||
+    statusLower === "approved" ||
+    (rawRow.rejectReason && rawRow.rejectReason.trim() !== "");
+
+  // 3. Explicitly check if the order has been APPROVED based on role
+  let isDecisionMade = isFulfilledOrRejected;
+  if (role === "groupleader" || role === "admin") {
+    // For Group Leader: Read-only if adminApproved is explicitly true (Approved) or false (Rejected)
+    // Editable ONLY when adminApproved is null/undefined
+    if (rawRow.adminApproved === true || 
+      rawRow.adminApproved === "true"||
+      rawRow.adminApproved === 1 ||
+      rawRow.approved === true)
+       {
+      isDecisionMade = true;
     }
-  };
+  } else if (role === "labmgmt") {
+    // For Lab Management: Read-only if labApproved is explicitly true or false
+    if (rawRow.labApproved === true || 
+      rawRow.labApproved === "true"||
+      rawRow.labApproved === 1 ||
+      row._labApprovedRaw === true) {
+      isDecisionMade = true;
+    }
+  } else {
+    // Other roles: Read-only if any approval or rejection exists
+    if (rawRow.labApproved === true || rawRow.adminApproved === true) {
+      isDecisionMade = true;
+    }
+  }
+
+  if (isDecisionMade) {
+    // Read-only modal AFTER Approval or Rejection
+    const mergedRow = {
+      ...rawRow,
+      _inventoryTypeRaw: row._inventoryTypeRaw || rawRow.inventoryType || "",
+    };
+    setViewOrderModal({ open: true, order: mergedRow });
+  } else {
+    // Editable form modal BEFORE Approval or Rejection
+    const existingFile =
+      (typeof rawRow.safetydatasheet === "string" && rawRow.safetydatasheet) ? rawRow.safetydatasheet :
+      (typeof rawRow.attachment === "string" && rawRow.attachment) ? rawRow.attachment :
+      (typeof rawRow.fileName === "string" && rawRow.fileName) ? rawRow.fileName :
+      null;
+
+    setSelectedOrder(mapFormDataToOrder(row, userRole));
+    setExistingAttachmentName(existingFile);
+    setIsOrderLocked(false); // Enables editable form controls
+    setIsModalOpen(true);
+  }
+};
+     
 
   // 🟢 Approve/Reject Order
 const handleApproval = async (order: Order, isApproved: boolean) => {
@@ -782,7 +832,7 @@ const normalizePhrases = (value: any): string => {
       return normalizeString(value);
     };
 
-  const normalizeApproveBool = (value: any, key?: string): boolean => {
+  const normalizeApproveBool = (value: any, key?: string): boolean | null => {
     // ✅ Handle undefined/null
     if (value == null) return false;
 
@@ -791,19 +841,23 @@ const normalizePhrases = (value: any): string => {
       const className = value.props.className;
       if (className.includes("text-success")) return true;
       if (className.includes("text-danger")) return false;
+      return null;
     }
 
     // ✅ Convert to boolean from common truthy/falsey string or number values
-    if (typeof value === "boolean") return value;
-    if (typeof value === "number") return value === 1;
+    //if (typeof value === "boolean") return value;
+    //if (typeof value === "number") return value === 1;
+if (value === true || value === "true" || value === 1) return true;
+  if (value === false || value === "false" || value === 0) return false;
 
-    if (typeof value === "string") {
-      const val = value.trim().toLowerCase();
-      return ["true", "yes", "1", "approved"].includes(val);
-    }
+  return null;
+    //if (typeof value === "string") {
+      //const val = value.trim().toLowerCase();
+      //return ["true", "yes", "1", "approved"].includes(val);
+    //}
 
     // ✅ Fallback for unexpected types
-    return false;
+    return null;
   };
 
   const normalizeArray = (value: any) =>
@@ -955,8 +1009,8 @@ const handleAddGenerlaiInventory = async (formData: Record<string, any>) => {
       // inventoryType: "generalInventory",
       // orderId: 0,
       approved: false,
-      // adminApproved: false,
-      // labApproved: false,
+      adminApproved: null,
+      labApproved: null,
       approvalStatusDate: new Date().toISOString(),
       status: "Pending",
       createdAt: new Date().toISOString(),
@@ -1282,6 +1336,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                     { label: "Budget No",  value: viewOrderModal.order.budgetno },
                     { label: "Ordered By", value: viewOrderModal.order.orderedby },
                     { label: "Status",     value: viewOrderModal.order.status },
+                    { label: "Rejection Reason", value: viewOrderModal.order.rejectReason || viewOrderModal.order.rejectreason },
                   ].map(({ label, value }) => (
                     <div key={label} className="pd-field">
                       <span className="pd-label">{label}</span>
