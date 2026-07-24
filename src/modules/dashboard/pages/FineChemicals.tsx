@@ -120,6 +120,15 @@ const initialProductData: Product = {
 const FineChemicals = () => {
   const userRole = JSON.parse(localStorage.getItem("user") || "{}");
   const navigate = useNavigate();
+  const getActiveGroupName = (user: any) => {
+    if (user.groupName && user.groupName.trim() !== "") {
+      return user.groupName;
+    }
+    // If it's empty and the user is Lab Management, force it to "Admin User"
+    return user.role?.toLowerCase().includes("labmgmt") ? "Admin User" : "Default Group";
+  };
+
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   console.log("FineChemicals - uploadedFile:", uploadedFile);
@@ -136,7 +145,11 @@ const FineChemicals = () => {
   
   const fetchData = async () => {
     try {
-      const result = await dispatch(fetchFineChemicals(userRole)).unwrap();
+      const payloadUser = {
+        ...userRole,
+        groupName: getActiveGroupName(userRole),
+      };
+      const result = await dispatch(fetchFineChemicals(payloadUser)).unwrap();
       console.log("Fetched Fine Chemicals:", result);
       // Debugging API Response
       const normalizedData = normalizeKeysAndFixSpelling(result.data);
@@ -330,8 +343,7 @@ const openProductDetails = (row: any) => {
         // Create FormData and append the file
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("groupName ", userRole.groupName); // Convert user object to string
-  
+        formData.append("groupName ", getActiveGroupName(userRole)); // Convert user object to string
         try {
           const response = await dispatch(uploadFineChemical(formData)).unwrap(); // Dispatch API call
           console.log("Upload Success:", response);
