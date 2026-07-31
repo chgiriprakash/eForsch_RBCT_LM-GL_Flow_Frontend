@@ -221,6 +221,26 @@ export const editFineChemicalOrder = createThunk("dashboard/modifyOrder", (order
 export const deleteFineChemicalOrder = createThunk("dashboard/deleteOrder", (id: number) =>
   axiosClient.delete(`api/orders/deleteOrder/${id}`).then(() => id)
 );
+// 🟢 Download All Orders (Handles actual file download)
+export const downloadAllOrders = createAsyncThunk(
+  "dashboard/downloadAllOrders",
+  async (groupName: string, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.get(`api/orders/downloadOrders?groupName=${groupName}`, {
+        responseType: "blob", // <--- CRITICAL: Tells Axios to expect a file, not JSON
+      });
+      
+      // Convert the raw file data into a local browser link
+      const blob = response.data;
+      const url = URL.createObjectURL(blob); 
+      return url; 
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || "Failed to fetch download file"
+      );
+    }
+  }
+);
 
 // 🟢 CRUD operations for Products
 export const fetchProducts = createThunk("dashboard/getInventoryList", (user) =>
@@ -1711,6 +1731,7 @@ const dashboardSlice = createSlice({
       addOrder,
       editOrder,
       deleteOrder,
+      downloadAllOrders,
       fetchProducts,
       addProduct,
       editProduct,
@@ -1768,7 +1789,7 @@ const dashboardSlice = createSlice({
         state.loading = false;
 
         // 🔹 DOWNLOAD (no state update)
-        if (thunk === downloadPDF) return;
+        if (thunk === downloadPDF|| thunk === downloadAllOrders) return;
 
         // 🔹 DELETE ORDER
         if (thunk === deleteOrder) {

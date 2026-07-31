@@ -4,7 +4,7 @@ import DynamicTable from "../../../shared/components/DynamicTable";
 import Modal from "../../../shared/components/Modal";
 import useAppDispatch from "../../../shared/hooks/useAppDispatch";
 import { useAppSelector } from "../../../shared/hooks/customHooks";
-import { addOrder, approveAdmin, approvelabMgmt, deliveredPOD, downloadPDF, addFineChemicalOrder, editFineChemicalOrder, editOrder, fetchOrders, fetchOrdersOD, getBudgetList, getCompanies, getStorageLocations, getGroupNames, orderedPOD, rejectAdmin, rejectlabMgmt, getHPhrases, getPPhrases } from "../dashboardSlice";
+import { addOrder, approveAdmin, approvelabMgmt, deliveredPOD, downloadPDF, addFineChemicalOrder, editFineChemicalOrder, editOrder, fetchOrders,downloadAllOrders, fetchOrdersOD, getBudgetList, getCompanies, getStorageLocations, getGroupNames, orderedPOD, rejectAdmin, rejectlabMgmt, getHPhrases, getPPhrases } from "../dashboardSlice";
 import ReusableForm from "../../../shared/components/ReusableForm";
 import addOrderFormConfig from "../../../shared/config/addOrderFormConfig";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
@@ -1006,11 +1006,11 @@ const handleAddGenerlaiInventory = async (formData: Record<string, any>) => {
 
     const mappedOrder = {
       ...formData,
-      // inventoryType: "generalInventory",
-      // orderId: 0,
+      //inventoryType: "generalInventory",
+      //orderId: 0,
       approved: false,
-      adminApproved: null,
-      labApproved: null,
+      //adminApproved: null,
+      //labApproved: null,
       approvalStatusDate: new Date().toISOString(),
       status: "Pending",
       createdAt: new Date().toISOString(),
@@ -1020,7 +1020,7 @@ const handleAddGenerlaiInventory = async (formData: Record<string, any>) => {
       createdBy: userRole.name,
       updatedBy: userRole.name
     };
-
+     // delete mappedOrder._removedFiles;
     const payload = new FormData();
 
     payload.append("order", JSON.stringify(mappedOrder));
@@ -1083,7 +1083,39 @@ const handleAddFinechemicalt = async (formData: Record<string, any>) => {
     alert("Failed to add order. Please try again.");
   }
 };
+// 🟢 Download All Orders via Redux Slice
+  const handleDownloadAllOrders = async () => {
+    try {
+      const groupName = userRole?.groupName || "";
 
+      if (!groupName) {
+        alert("Group name is missing. Cannot download orders.");
+        return;
+      }
+
+      // 1. Dispatch the action and get the local Blob URL back
+      const fileUrl = await dispatch(downloadAllOrders(groupName)).unwrap();
+
+      if (!fileUrl) {
+        throw new Error("Failed to generate file URL.");
+      }
+
+      // 2. Trigger the browser download
+      const link = document.createElement("a");
+      link.href = fileUrl;
+      
+      // Set the default filename (Change .xlsx to .csv if your backend sends a CSV)
+      link.setAttribute("download", `Chemical_Orders_${groupName}.xlsx`); 
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      alert("Failed to download the file from the server. Please check the console for details.");
+    }
+  };
 // ✅ Auto-fill company internal number when company is selected
 const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string, any>> | void => {
   if (id === "companyname" || id === "companyName") {
@@ -1107,6 +1139,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
           <div className="btn-wrapper"> 
             <Button onClick={addGeneralInventory} className="btn-color"> Add Order General Inventory </Button> 
             <Button onClick={addFineChemical} className="btn-color"> Add Order Fine Chemical Inventory </Button> 
+            <Button  onClick={handleDownloadAllOrders} className="btn-color">Download All</Button>
           </div> 
         </div>
         <div className={`dynamic-class ${userRole?.role === 'podept' ? 'podept' : ''}`}>
