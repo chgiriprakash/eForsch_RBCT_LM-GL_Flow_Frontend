@@ -62,7 +62,7 @@ const navigationConfig = [
         roles:  ['admin', 'groupleader', 'scientist', 'labMgmt'], // ['admin'] Only visible to Admins
     },
     {
-        icon: 'fa fa-sliders',
+        icon: 'fa fa-cogs',
         title: 'Administration',
         link: '/administration',
         description: 'Manage lookup tables: H-Phrases, P-Phrases, Companies, Storage Locations.',

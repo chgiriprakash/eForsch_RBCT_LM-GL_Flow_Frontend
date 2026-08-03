@@ -13,6 +13,7 @@ import {
   uploadFineChemical,
   getHPhrases,
   getPPhrases,
+  downloadAllOrders,
 } from "../dashboardSlice";
 import { addFineChemicals } from "../dashboardSlice";
 import { useAppDispatch } from "../../../shared/hooks/useAppDispatch";
@@ -368,6 +369,41 @@ const openProductDetails = (row: any) => {
     }
   };
   
+// 🟢 Download All Orders via Redux Slice
+  const handleDownloadAllOrders = async () => {
+    try {
+      const groupName = userRole?.groupName || "";
+
+      if (!groupName) {
+        alert("Group name is missing. Cannot download orders.");
+        return;
+      }
+
+      // 1. Dispatch the action and get the local Blob URL back
+      const fileUrl = await dispatch(downloadAllOrders(groupName)).unwrap();
+
+      if (!fileUrl) {
+        throw new Error("Failed to generate file URL.");
+      }
+
+      // 2. Trigger the browser download
+      const link = document.createElement("a");
+      link.href = fileUrl;
+      
+      // Set the default filename (Change .xlsx to .csv if your backend sends a CSV)
+      link.setAttribute("download", `Chemical_Orders_${groupName}.xlsx`); 
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      alert("Failed to download the file from the server. Please check the console for details.");
+    }
+  };
+
+
   const handleFormSubmit = async (formData: Record<string, any>) => {
   try {
     if (!formData || Object.keys(formData).length === 0) {
@@ -608,9 +644,11 @@ const downloadAttachment = async (row: any) => {
               <Button onClick={addProductModel} className="btn-color">
                 Add Fine Chemicals
               </Button>
+              
               <div onClick={handleUploadClick} className="btn-color upload-wrapper">
                 Upload Excel<FileUpload />
               </div>
+              <Button  onClick={handleDownloadAllOrders} className="btn-color">Download All</Button>
             </div>
           </div>
 
