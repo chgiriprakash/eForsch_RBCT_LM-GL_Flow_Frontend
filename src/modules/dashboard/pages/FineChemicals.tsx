@@ -13,7 +13,7 @@ import {
   uploadFineChemical,
   getHPhrases,
   getPPhrases,
-  downloadAllOrders,
+  downloadFineChemicalInventory,
 } from "../dashboardSlice";
 import { addFineChemicals } from "../dashboardSlice";
 import { useAppDispatch } from "../../../shared/hooks/useAppDispatch";
@@ -369,18 +369,18 @@ const openProductDetails = (row: any) => {
     }
   };
   
-// 🟢 Download All Orders via Redux Slice
-  const handleDownloadAllOrders = async () => {
+// 🟢 Download All Fine Chemical Inventory via Redux Slice
+  const handleDownloadAllFineChemicals = async () => {
     try {
       const groupName = userRole?.groupName || "";
 
       if (!groupName) {
-        alert("Group name is missing. Cannot download orders.");
+        alert("Group name is missing. Cannot download inventory.");
         return;
       }
 
       // 1. Dispatch the action and get the local Blob URL back
-      const fileUrl = await dispatch(downloadAllOrders(groupName)).unwrap();
+      const fileUrl = await dispatch(downloadFineChemicalInventory(groupName)).unwrap();
 
       if (!fileUrl) {
         throw new Error("Failed to generate file URL.");
@@ -389,10 +389,9 @@ const openProductDetails = (row: any) => {
       // 2. Trigger the browser download
       const link = document.createElement("a");
       link.href = fileUrl;
-      
-      // Set the default filename (Change .xlsx to .csv if your backend sends a CSV)
-      link.setAttribute("download", `Chemical_Orders_${groupName}.xlsx`); 
-      
+
+      link.setAttribute("download", `FineChemicalInventory_${groupName}.xlsx`);
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -648,7 +647,7 @@ const downloadAttachment = async (row: any) => {
               <div onClick={handleUploadClick} className="btn-color upload-wrapper">
                 Upload Excel<FileUpload />
               </div>
-              <Button  onClick={handleDownloadAllOrders} className="btn-color">Download All</Button>
+              <Button  onClick={handleDownloadAllFineChemicals} className="btn-color">Download All</Button>
             </div>
           </div>
 
