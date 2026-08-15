@@ -112,8 +112,8 @@ export const fetchOrders = createThunk(
 );
 
 // 🟢 Approve/Reject Admin Calls
-export const rejectAdmin = createThunk("dashboard/rejectGroupLeader", (id: number) =>
-  axiosClient.get(`api/orders/rejectGroupLeader/${id}`).then((res) => res.data)
+export const rejectAdmin = createThunk("dashboard/rejectGroupLeader", ({ id, rejectReason }: { id: number; rejectReason: string }) =>
+  axiosClient.get(`api/orders/rejectGroupLeader/${id}?rejectReason=${encodeURIComponent(rejectReason)}`).then((res) => res.data)
 );
 
 export const approveAdmin = createThunk("dashboard/approveGroupLeader/approve", (id: number) =>

@@ -593,22 +593,32 @@ const enhanceList = (list: Order[], userRole: any) => {
     }
 
     if (role === "admin" || role === "groupleader") {
-      const isPendingGL = item.status?.toLowerCase() === "pending" && item.labApproved === true && item.adminApproved === null;
       const canAct = (role === "admin" || item.groupName === userRole.groupName) && !!item.labApproved;
+      // adminApproved defaults to false at creation and STAYS false for both
+      // "pending GL decision" and "GL rejected" - it's never actually null,
+      // so it can't distinguish those two states. Only the status string
+      // reliably signals an actual GL rejection. Also checking string/number
+      // forms of true since this API has been seen returning adminApproved
+      // as "true"/1 in some paths, not just boolean true.
+      const adminDecisionMade =
+        item.adminApproved === true ||
+        item.adminApproved === "true" ||
+        item.adminApproved === 1 ||
+        item.status?.toLowerCase() === "rejected";
 
       requestButtons = canAct ? (
         <>
           <button
             className="btn-color upload-wrapper btn btn-primary"
             onClick={() => handleApproval(item, true)}
-            //disabled={!!item.adminApproved}
+            disabled={adminDecisionMade}
           >
             Approve
           </button>
           <button
             className="btn-color upload-wrapper btn btn-danger"
-            onClick={() => handleApproval(item, false)}
-            //disabled={!!item.adminApproved}
+            onClick={() => { setRejectModal({ open: true, order: item }); setRejectReason(""); }}
+            disabled={adminDecisionMade}
           >
             Reject
           </button>
@@ -752,7 +762,7 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
     } else if (isApproved) {
       await dispatch(approveAdmin(order.orderId)).unwrap();
     } else {
-      await dispatch(rejectAdmin(order.orderId)).unwrap();
+      await dispatch(rejectAdmin({ id: order.orderId, rejectReason: rejectReason || "" })).unwrap();
     }
 
     alert(`Order ${isApproved ? "Approved" : "Rejected"} successfully!`);
