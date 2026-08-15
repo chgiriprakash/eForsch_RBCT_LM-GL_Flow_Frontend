@@ -599,11 +599,13 @@ const enhanceList = (list: Order[], userRole: any) => {
       // so it can't distinguish those two states. Only the status string
       // reliably signals an actual GL rejection. Also checking string/number
       // forms of true since this API has been seen returning adminApproved
-      // as "true"/1 in some paths, not just boolean true.
+      // as "true"/1 in some paths, not just boolean true (cast to any since
+      // the declared type is boolean but the runtime value isn't always).
+      const adminApprovedRaw = item.adminApproved as any;
       const adminDecisionMade =
-        item.adminApproved === true ||
-        item.adminApproved === "true" ||
-        item.adminApproved === 1 ||
+        adminApprovedRaw === true ||
+        adminApprovedRaw === "true" ||
+        adminApprovedRaw === 1 ||
         item.status?.toLowerCase() === "rejected";
 
       requestButtons = canAct ? (
