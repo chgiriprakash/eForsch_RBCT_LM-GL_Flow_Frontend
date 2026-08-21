@@ -697,29 +697,32 @@ const renderApprovalIcon = (val: boolean | null | undefined) => {
     statusLower === "approved" ||
     (rawRow.rejectReason && rawRow.rejectReason.trim() !== "");
 
+  // Approval flags can come back as boolean true, string "true", or number 1
+  // depending on the API path/refresh that populated them — normalize once
+  // here so every role branch treats them the same way.
+  const isApprovedTruthy = (value: any) =>
+    value === true || value === "true" || value === 1;
+
+  const labApproved = isApprovedTruthy(rawRow.labApproved) || isApprovedTruthy(row._labApprovedRaw);
+  const adminApproved = isApprovedTruthy(rawRow.adminApproved) || isApprovedTruthy(rawRow.approved);
+
   // 3. Explicitly check if the order has been APPROVED based on role
   let isDecisionMade = isFulfilledOrRejected;
   if (role === "groupleader" || role === "admin") {
     // For Group Leader: Read-only if adminApproved is explicitly true (Approved) or false (Rejected)
     // Editable ONLY when adminApproved is null/undefined
-    if (rawRow.adminApproved === true || 
-      rawRow.adminApproved === "true"||
-      rawRow.adminApproved === 1 ||
-      rawRow.approved === true)
-       {
+    if (adminApproved) {
       isDecisionMade = true;
     }
   } else if (role === "labmgmt") {
     // For Lab Management: Read-only if labApproved is explicitly true or false
-    if (rawRow.labApproved === true || 
-      rawRow.labApproved === "true"||
-      rawRow.labApproved === 1 ||
-      row._labApprovedRaw === true) {
+    if (labApproved) {
       isDecisionMade = true;
     }
   } else {
-    // Other roles: Read-only if any approval or rejection exists
-    if (rawRow.labApproved === true || rawRow.adminApproved === true) {
+    // Scientist and all other roles: Read-only once EITHER approval step has happened,
+    // and permanently read-only from then on regardless of what GL does afterward.
+    if (labApproved || adminApproved) {
       isDecisionMade = true;
     }
   }
