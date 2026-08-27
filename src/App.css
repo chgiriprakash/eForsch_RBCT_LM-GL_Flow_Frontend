@@ -796,6 +796,10 @@ select:focus {
   background: linear-gradient(145deg, #fa5454, #eb3c3c); /* Bright Teal / Cyan */
 }
 
+.card:nth-child(9) {
+  background: linear-gradient(145deg, #16a085, #48c9b0); /* Teal / Emerald */
+}
+
 /* Hover Effects */
 .card:hover {
   transform: translateY(-12px);
