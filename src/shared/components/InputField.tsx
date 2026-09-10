@@ -14,6 +14,7 @@ interface InputFieldProps {
   label: string;
   type: string;
   value: any;
+  placeholder?: string;
   options?: OptionType[];
   validation?: ValidationRules;
   error?: string;
@@ -229,6 +230,7 @@ const InputField: React.FC<InputFieldProps> = ({
   label,
   type,
   value,
+  placeholder,
   options,
   error,
   onChange,
@@ -387,6 +389,7 @@ const InputField: React.FC<InputFieldProps> = ({
           id={id}
           type={type}
           value={value || ""}
+          placeholder={placeholder}
           onChange={handleChange}
           className={`input ${error ? "errorInput" : ""}`}
           disabled={disabled}

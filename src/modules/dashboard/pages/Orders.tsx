@@ -214,11 +214,14 @@ const Orders = () => {
   const [rejectModal, setRejectModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
   const [rejectReason, setRejectReason] = useState("");
   const [deliveryModal, setDeliveryModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
-  const [deliveryForm, setDeliveryForm] = useState({ storageLocation: "", orderType: "bulk", barcodeInfo: "" });
- 
+ // const [deliveryForm, setDeliveryForm] = useState({ storageLocation: "", orderType: "bulk", barcodeInfo: "" });
+ const [deliveryForm, setDeliveryForm] = useState<{ storageLocation: string; orderType: string; barcodes: string[] }>({ storageLocation: "", orderType: "bulk", barcodes: [] });
  const [generalDeliveryModal, setGeneralDeliveryModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
   const [generalDeliveryTextField, setGeneralDeliveryTextField] = useState("");
-  
+  const [generalDeliveryBarcodes, setGeneralDeliveryBarcodes] = useState<string[]>([]);
+const [orderedModal, setOrderedModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
+  const [sapOrderNumber, setSapOrderNumber] = useState("");
+
   const [viewOrderModal, setViewOrderModal] = useState<{ open: boolean; order: any | null }>({ open: false, order: null });
   
   
@@ -244,11 +247,11 @@ const Orders = () => {
       //   pending (labApproved=true)   → waiting for group leader, no buttons
       //   ordered (both approved)      → Delivered button
       //   rejected                     → stays visible so nothing "disappears"
-      if (role === "labmgmt") {
-        filteredList = filteredList.filter((item: any) =>
-          item.status?.toLowerCase() !== "delivered"
-        );
-      }
+     // if (role === "labmgmt") {
+       // filteredList = filteredList.filter((item: any) =>
+         // item.status?.toLowerCase() !== "delivered"
+        //);
+      //}
 
       // groupleader sees lab-approved orders for their group (for approval action)
       // AND their own newly placed orders (labApproved may still be false/null)
@@ -266,7 +269,7 @@ const Orders = () => {
       setData({ ...result, columns: updatedColumns, list: updatedList });
     }
   } catch (err) {
-    console.error("Error fetching orders:", err);
+    console.error("Error fetching :", err);
   }
 };
 
@@ -287,6 +290,13 @@ const fetchPodeptData = async () => {
             (item.adminApproved === true && item.labApproved === true) ||
             item.status?.toLowerCase() === "rejected"
         );
+        filteredList.sort((a, b) => {
+          const aIsDisabled = ["ordered", "delivered"].includes(a.status?.toLowerCase() || "");
+          const bIsDisabled = ["ordered", "delivered"].includes(b.status?.toLowerCase() || "");
+          
+          if (aIsDisabled === bIsDisabled) return 0; // Keep original order if both are the same
+          return aIsDisabled ? 1 : -1; // Push disabled rows to the bottom
+        });
       }
 
       const updatedColumns = enhanceColumns(normalizedData.columns || [], userRole);
@@ -405,6 +415,8 @@ const normalizeKeysAndCleanData = (data: any) => {
         orderedBy: "orderedby",          // backend column key is camelCase but row data is lowercase
         weightVolSubQty: "weightvolsubqty", // backend column key is camelCase but row data is lowercase
         budgetNo: "budgetno",            // OrderVO has both budgetno and budgetNo; merge into one
+        orderdate: "orderdate",
+        orderDate: "orderdate",
     };
 
     // Define ONLY the columns to show (whitelist) with display labels
@@ -417,6 +429,7 @@ const normalizeKeysAndCleanData = (data: any) => {
       { key: "price",           label: "Price",                 sortable: true  },
       { key: "budgetno",        label: "Budget Number",         sortable: false },
       { key: "orderedby",       label: "Ordered By",            sortable: false },
+      { key: "orderdate",       label: "Order Date",            sortable: true  },
       { key: "status",          label: "Order Status",          sortable: true  },
     ];
 
@@ -475,7 +488,7 @@ const enhanceColumns = (columns: OrderColumn[], userRole: any) => {
 
   let updatedColumns = columns.map((column) => ({
     ...column,
-    isDate: ["orderdate", "approvalStatusDate", "createdat", "updatedat"].includes(
+    isDate: ["approvalStatusDate", "createdat", "updatedat"].includes(
       column.key?.toLowerCase()
     ),
     hidden: column.key.includes("orderId") ? true : false,
@@ -526,6 +539,17 @@ const isFineChemical = (order: any) => {
   return raw.toLowerCase() === "finechemicalinventory";
 };
 
+const formatToDDMMYY = (dateVal: any) => {
+  if (!dateVal) return "N/A";
+  const date = new Date(dateVal);
+  if (isNaN(date.getTime())) return String(dateVal);
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
+};
+
 // ✅ Modify `enhanceList` function to use `formatDate`
 const enhanceList = (list: Order[], userRole: any) => {
   const role = userRole?.role?.toLowerCase();
@@ -539,7 +563,8 @@ const enhanceList = (list: Order[], userRole: any) => {
         <>
           <button
             className="btn-color upload-wrapper btn btn-primary"
-            onClick={() => handleOrder(item, "Ordered")}
+            onClick={() => { setOrderedModal({ open: true, order: item }); setSapOrderNumber(""); }}
+            //onClick={() => handleOrder(item, "Ordered")}
             disabled={alreadyOrdered}
             title={alreadyOrdered ? "Already ordered" : undefined}
           >
@@ -557,16 +582,27 @@ const enhanceList = (list: Order[], userRole: any) => {
             isFineChemical(item) ? (
               <button
                 className="btn-color upload-wrapper btn btn-danger"
-                onClick={() => { setDeliveryModal({ open: true, order: item }); setDeliveryForm({ storageLocation: item.storageLocation || "", orderType: "bulk", barcodeInfo: "" }); }}
+                //onClick={() => { setDeliveryModal({ open: true, order: item }); setDeliveryForm({ storageLocation: item.storageLocation || "", orderType: "bulk", barcodeInfo: "" }); }}
+              onClick={() => { 
+                     const qty = Number(item.quantity) || 1; // Fallback to 1 if quantity is invalid
+                    setDeliveryModal({ open: true, order: item }); 
+                    setDeliveryForm({ 
+                    storageLocation: item.storageLocation || "", 
+                    orderType: "bulk", 
+                   barcodes: Array(qty).fill("") // Initialize array based on quantity
+                                     }); 
+                            }}
+              
               >
                 Delivered
               </button>
             ) : (
               <button
                 className="btn-color upload-wrapper btn btn-danger"
-               
-               onClick={() => { setGeneralDeliveryModal({ open: true, order: item }); setGeneralDeliveryTextField(""); }}
-                // onClick={() => handleOrder(item, "Delivered", {})}
+                onClick={() => { 
+                  setGeneralDeliveryModal({ open: true, order: item }); 
+                  setGeneralDeliveryTextField("");
+                }}
               >
                 Delivered
               </button>
@@ -627,7 +663,8 @@ const enhanceList = (list: Order[], userRole: any) => {
         </>
       ) : null;
     }
-const renderApprovalIcon = (val: boolean | null | undefined) => {
+
+    const renderApprovalIcon = (val: boolean | null | undefined) => {
       if (val === true) {
         return <i className="fa fa-check-circle text-success"></i>;
       }
@@ -638,23 +675,16 @@ const renderApprovalIcon = (val: boolean | null | undefined) => {
         return <i className="fa fa-times-circle text-danger"></i>;
       }
       return ""; // Returns empty string if null, undefined, or pending
-    }; 
+    };
 
     return {
       ...item,
-      _labApprovedRaw: item.labApproved === true, // preserve raw boolean before icon overwrite
+      _labApprovedRaw: item.labApproved === true,
       fileName: item.fileName ? item.fileName : <i className="fa fa-paperclip"></i>,
-      // Fall back to creator for older orders saved without orderedby
       orderedby: item.orderedby || item.createdBy || item.addedby || "",
+      orderdate: formatToDDMMYY(item.orderdate),
       adminApproved: renderApprovalIcon(item.adminApproved),
-      //item.adminApproved
-       // ? <i className="fa fa-check-circle text-success"></i>
-        //: <i className="fa fa-times-circle text-danger"></i>,
-      labApproved: 
-      renderApprovalIcon(item.labApproved),
-      //item.labApproved
-        //? <i className="fa fa-check-circle text-success"></i>
-        //: <i className="fa fa-times-circle text-danger"></i>,
+      labApproved: renderApprovalIcon(item.labApproved),
       _inventoryTypeRaw: typeof item.inventoryType === "string" ? item.inventoryType : "",
       inventoryType:
         item.inventoryType === "generalInventory"
@@ -785,12 +815,12 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
 
 
    // 🟢 Ordered/Delivered Status Order
-  const handleOrder = async (order: Order, status: string, extra?: { storageLocation?: string; orderType?: string; barcodeInfo?: string }) => {
+  const handleOrder = async (order: Order, status: string, extra?: { storageLocation?: string; orderType?: string; barcodeInfo?: string; sapOrderNumber?: string }) => {
     try {
       const user = { email: userRole.email, name: userRole.name, role: userRole.role, groupName: userRole.groupName };
       const apiName = (status === "Ordered") ? orderedPOD : deliveredPOD;
       const payload = status === "Ordered"
-        ? { id: order.orderId, user }
+        ? { id: order.orderId, user , ...(extra?.sapOrderNumber && { sapOrderNumber: extra.sapOrderNumber }) }
         : { id: order.orderId, user,
            ...(extra?.orderType && { orderType: extra?.orderType }),
            ...(extra?.barcodeInfo && { barcodeInfo: extra?.barcodeInfo }),
@@ -1221,7 +1251,12 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                     name="orderType"
                     value="bulk"
                     checked={deliveryForm.orderType === "bulk"}
-                    onChange={() => setDeliveryForm({ ...deliveryForm, orderType: "bulk", barcodeInfo: "" })}
+                    onChange={() => setDeliveryForm({ 
+                      ...deliveryForm, 
+                      orderType: "bulk", 
+                      // Reset the values to empty strings instead of using barcodeInfo
+                      barcodes: deliveryForm.barcodes.map(() => "") 
+                    })}
                   />
                   Bulk Order
                 </label>
@@ -1241,13 +1276,21 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
             {deliveryForm.orderType === "nonbulk" && (
               <div className="reject-modal-field">
                 <label className="reject-modal-label">Barcode Information <span className="text-danger">*</span></label>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="Enter barcode..."
-                  value={deliveryForm.barcodeInfo}
-                  onChange={(e) => setDeliveryForm({ ...deliveryForm, barcodeInfo: e.target.value })}
-                />
+                {deliveryForm.barcodes.map((barcode, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    className="input"
+                    placeholder={`Enter barcode for item ${index + 1}...`}
+                    value={barcode}
+                    style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e0e6ef", fontSize: "14px", marginBottom: "8px" }}
+                    onChange={(e) => {
+                      const newBarcodes = [...deliveryForm.barcodes];
+                      newBarcodes[index] = e.target.value;
+                      setDeliveryForm({ ...deliveryForm, barcodes: newBarcodes });
+                    }}
+                  />
+                ))}
               </div>
             )}
 
@@ -1258,14 +1301,17 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
               <button
                 className="btn btn-success"
                 disabled={
-                  deliveryForm.orderType === "nonbulk" && !deliveryForm.barcodeInfo.trim()
+                  deliveryForm.orderType === "nonbulk" && 
+                  deliveryForm.barcodes.some((b) => !b.trim()) // Disable if any barcode is empty
                 }
                 onClick={async () => {
                   if (deliveryModal.order) {
                     await handleOrder(deliveryModal.order, "Delivered", {
                       storageLocation: deliveryForm.storageLocation,
                       orderType: deliveryForm.orderType,
-                      barcodeInfo: deliveryForm.barcodeInfo,
+                      // Assuming the backend expects a comma-separated string. 
+                      // If it expects an array, just pass: barcodeInfo: deliveryForm.barcodes
+                      barcodeInfo: deliveryForm.barcodes.join(","), 
                     });
                     setDeliveryModal({ open: false, order: null });
                   }
@@ -1331,8 +1377,8 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                   {[
                     { label: "Company Internal No", value: viewOrderModal.order.companyinternalno || viewOrderModal.order.companyInternalNo },
                     { label: "SAP Material No",     value: viewOrderModal.order.sapmaterialno || viewOrderModal.order.sapMaterialNo },
-                    { label: "Expiry Date",         value: viewOrderModal.order.expiryDate ? new Date(viewOrderModal.order.expiryDate).toLocaleDateString("en-GB") : null },
-                    { label: "Order Date",          value: viewOrderModal.order.orderdate ? new Date(viewOrderModal.order.orderdate).toLocaleDateString("en-GB") : null },
+                    { label: "Expiry Date",         value: formatToDDMMYY(viewOrderModal.order.expiryDate) },
+                    { label: "Order Date",          value: formatToDDMMYY(viewOrderModal.order.orderdate) },
                   ].map(({ label, value }) => (
                     <div key={label} className="pd-field">
                       <span className="pd-label">{label}</span>
@@ -1452,7 +1498,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
         </div>
       )}
 
-      {/* 🟢 ADD THIS GENERAL DELIVERY MODAL POPUP HERE */}
+      {/* 🟢 GENERAL INVENTORY DELIVERY MODAL POPUP */}
       {generalDeliveryModal.open && (
         <div className="reject-modal-overlay">
           <div className="reject-modal">
@@ -1461,6 +1507,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
               General Inventory Delivery Log
             </h5>
             
+            {/* Your Original Storage Location Text Field */}
             <div className="reject-modal-field">
               <label className="reject-modal-label">Storage Location<span className="text-danger">*</span></label>
               <input
@@ -1475,24 +1522,83 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
             <div className="reject-modal-actions">
               <button
                 className="btn btn-secondary"
-                onClick={() => setGeneralDeliveryModal({ open: false, order: null })}
+                onClick={() => {
+                  setGeneralDeliveryModal({ open: false, order: null });
+                  setGeneralDeliveryTextField("");
+                  setGeneralDeliveryBarcodes([]);
+                }}
               >
                 Cancel
               </button>
               <button
                 className="btn btn-success"
-                disabled={!generalDeliveryTextField.trim()}
+                disabled={!generalDeliveryTextField.trim() }
                 onClick={async () => {
                   if (generalDeliveryModal.order) {
                     await handleOrder(generalDeliveryModal.order, "Delivered", {
-                      barcodeInfo: generalDeliveryTextField
+                      storageLocation: generalDeliveryTextField, // Passing original text field here
                     });
                     setGeneralDeliveryModal({ open: false, order: null });
-                  setGeneralDeliveryTextField("");
+                    setGeneralDeliveryTextField("");
+                    
                   }
                 }}
               >
                 Confirm Delivery
+              </button>
+              <button
+                className="btn-color upload-wrapper btn btn-primary"
+                onClick={() => window.print()}
+                type="button"
+              >
+                <i className="fa fa-print me-1" /> Print
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Ordered Modal Popup */}
+      {orderedModal.open && (
+        <div className="reject-modal-overlay">
+          <div className="reject-modal">
+            <h5 className="reject-modal-title">
+              <i className="fa fa-shopping-cart me-2 text-primary" />
+              Confirm Order
+            </h5>
+            
+            <div className="reject-modal-field">
+              <label className="reject-modal-label">Enter SAP Order number <span className="text-danger">*</span></label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="SAP Order number..."
+                value={sapOrderNumber}
+                onChange={(e) => setSapOrderNumber(e.target.value)}
+                style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e0e6ef", fontSize: "14px" }}
+              />
+            </div>
+            
+            <div className="reject-modal-actions">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setOrderedModal({ open: false, order: null })}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={!sapOrderNumber.trim()}
+                onClick={async () => {
+                  if (orderedModal.order) {
+                    await handleOrder(orderedModal.order, "Ordered", {
+                      sapOrderNumber: sapOrderNumber
+                    });
+                    setOrderedModal({ open: false, order: null });
+                    setSapOrderNumber("");
+                  }
+                }}
+              >
+                Submit Order
               </button>
             </div>
           </div>

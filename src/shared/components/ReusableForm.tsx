@@ -9,6 +9,7 @@ type FormField = {
   id: string;
   label: string;
   type: string;
+  placeholder?: string;
 
   multiple?: boolean;
   accept?: string;
@@ -19,6 +20,7 @@ type FormField = {
     required?: boolean;
     minLength?: number;
     pattern?: RegExp;
+    patternMessage?: string;
   };
 
   showIf?: {
@@ -92,7 +94,7 @@ const ReusableForm: React.FC<FormProps> = ({
       return `Minimum length is ${validation.minLength} characters.`;
 
     if (validation.pattern && !validation.pattern.test(value))
-      return "Invalid format.";
+      return validation.patternMessage ||"Invalid format.";
 
     return "";
   };
@@ -235,6 +237,7 @@ const ReusableForm: React.FC<FormProps> = ({
                 )}
               </div>
             )}
+            
 
             {/* ✅ RICH TEXT */}
             {field.type === "richtext" && (
@@ -268,6 +271,7 @@ const ReusableForm: React.FC<FormProps> = ({
                   id={field.id}
                   label={field.label}
                   type={field.type}
+                  placeholder={field.placeholder}
                   value={formData[field.id] || ""}
                   options={field.options}
                   validation={field.validation}

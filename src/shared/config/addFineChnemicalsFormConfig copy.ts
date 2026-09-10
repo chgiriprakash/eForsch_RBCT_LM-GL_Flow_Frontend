@@ -28,9 +28,11 @@ const addFineChemicalsFormConfig = (
     id: "quantity",
     label: "Quantity",
     type: "text", // changed from "number" to "text"
+    placeholder: "Enter 1 to 10",
     validation: {
       required: true,
-      pattern: /^[0-9]+$/, // optional: enforces numeric values only
+      pattern: /^(10|[1-9])$/, // optional: enforces numeric values only
+      patternMessage: "Please enter a valid number between 1 and 10",
     },
   },
   {

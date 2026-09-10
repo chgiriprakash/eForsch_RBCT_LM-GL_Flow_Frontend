@@ -796,6 +796,16 @@ select:focus {
   background: linear-gradient(145deg, #fa5454, #eb3c3c); /* Bright Teal / Cyan */
 }
 
+/* Adding a background for the 9th card (Administration) */
+.card:nth-child(9) {
+  background: linear-gradient(145deg, #607d8b, #90a4ae); /* Slate/Grey Gradient */
+}
+
+/* Optional: Add a 10th one just in case you add another feature later! */
+.card:nth-child(10) {
+  background: linear-gradient(145deg, #e91e63, #f48fb1); /* Pink Gradient */
+}
+
 /* Hover Effects */
 .card:hover {
   transform: translateY(-12px);
