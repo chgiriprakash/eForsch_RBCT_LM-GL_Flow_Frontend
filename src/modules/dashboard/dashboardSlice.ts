@@ -138,9 +138,9 @@ export const fetchOrdersOD = createThunk("dashboard/getOrdersListByGroupName", (
 // 🟢 Ordered/Delivered POD Calls
 export const orderedPOD = createThunk(
   "dashboard/ordered",
-  ({ id, user }: { id: number; user: { email: string; name: string; role: string; groupName: string } }) =>
+  ({ id, user, sapOrderNumber }: { id: number; user: { email: string; name: string; role: string; groupName: string }; sapOrderNumber?: string; }) =>
     axiosClient
-      .get(`api/orders/ordered/${id}?page=1&size=10000&id=10&email=${user.email}&name=${user.name}&role=${user.role}`)
+      .get(`api/orders/ordered/${id}?page=1&size=10000&id=10&email=${user.email}&name=${user.name}&role=${user.role}&sapOrderNumber=${sapOrderNumber || ''}`)
       .then((res) => res.data)
 );
 

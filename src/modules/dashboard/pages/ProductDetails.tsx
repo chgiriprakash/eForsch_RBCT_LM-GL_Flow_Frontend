@@ -23,6 +23,7 @@ import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormC
 
 const ProductDetails = () => {
   const userRole = JSON.parse(localStorage.getItem("user") || "{}");
+  const isLabManagement = userRole.role?.toLowerCase() === "labmgmt" || userRole.role?.toLowerCase() === "labmanager";
   const navigate = useNavigate();
   const location = useLocation();
   console.log("ProductDetails - location:", location);
@@ -602,9 +603,11 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
                 <Button className="pd-btn pd-btn-outline" onClick={handleShare}>
                   <i className="fa fa-share-alt me-1" /> Share
                 </Button>
-                <Button className="pd-btn pd-btn-outline" onClick={handleUpdate}>
-                  <i className="fa fa-edit me-1" /> Update
-                </Button>
+                {isLabManagement && (
+                  <Button className="pd-btn pd-btn-outline" onClick={handleUpdate}>
+                    <i className="fa fa-edit me-1" /> Update
+                  </Button>
+                )}
                 <Button className="pd-btn pd-btn-primary" onClick={handleOrder}>
                   <i className="fa fa-plus me-1" /> Add Order
                 </Button>

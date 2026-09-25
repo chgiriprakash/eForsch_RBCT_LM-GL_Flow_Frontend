@@ -1811,11 +1811,27 @@ select:focus {
   border-color: #005ca7;
   box-shadow: 0 0 0 3px rgba(0, 92, 167, 0.12);
 }
-
+.dt-th {
+  position: sticky;      /* Keeps the header fixed */
+  top: 0;                /* Locks it to the top of the container */
+  z-index: 10;           /* Ensures it stays above the scrolling rows */
+  background: #005ca7;
+  color: #fff;
+  padding: 11px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid #004a8f;
+  user-select: none;
+  transition: background 0.15s;
+}
 /* ── Table container with sticky header ── */
 .dt-table-container {
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: auto;
+  max-height: 600px;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.07);
@@ -1829,14 +1845,9 @@ select:focus {
   border-spacing: 0;
   font-size: 13px;
   font-family: "Gothic A1", sans-serif;
+  overflow: visible
 }
 
-/* ── Sticky header ── */
-.dt-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
 
 .dt-th {
   background: #005ca7;
@@ -1885,6 +1896,9 @@ select:focus {
 .dt-table tbody tr:hover {
   background-color: #eef4fb !important;
 }
+
+
+
 
 .dt-td {
   padding: 10px 14px;

@@ -30,6 +30,7 @@ interface Order {
   catalogue: string;
   companyName: string;
   sapmaterialno: string;
+  sapOrderNumber?: string;
   quantity: number;
   budgetno: string;
   price: string;
@@ -97,6 +98,7 @@ const initialData: Order = {
   catalogue: "", // fixed from catalogue
   companyName: "",
   sapmaterialno: "",
+  sapOrderNumber: "",
   quantity: 0,
   budgetno: "",
   price: "",
@@ -243,10 +245,10 @@ const [orderedModal, setOrderedModal] = useState<{ open: boolean; order: Order |
       const role = userRole?.role?.toLowerCase();
 
       // labMgmt sees all non-delivered orders:
-      //   pending (labApproved=false)  → Approve / Reject buttons
-      //   pending (labApproved=true)   → waiting for group leader, no buttons
-      //   ordered (both approved)      → Delivered button
-      //   rejected                     → stays visible so nothing "disappears"
+      //   pending (labApproved=false)  
+      //   pending (labApproved=true)   
+      //   ordered (both approved)      
+      //   rejected                     
      // if (role === "labmgmt") {
        // filteredList = filteredList.filter((item: any) =>
          // item.status?.toLowerCase() !== "delivered"
@@ -409,6 +411,8 @@ const normalizeKeysAndCleanData = (data: any) => {
         companyInternalNo: "companyinternalno",
         sapmaterialno: "sapmaterialno",
         sapMaterialNo: "sapmaterialno",
+        sapOrderNumber: "sapOrderNumber",
+        sapordernumber: "sapOrderNumber",
         remark: "remarks",
         labapproved: "labApproved",      // preserve camelCase
         adminapproved: "adminApproved",  // preserve camelCase
@@ -430,7 +434,7 @@ const normalizeKeysAndCleanData = (data: any) => {
       { key: "budgetno",        label: "Budget Number",         sortable: false },
       { key: "orderedby",       label: "Ordered By",            sortable: false },
       { key: "orderdate",       label: "Order Date",            sortable: true  },
-      { key: "status",          label: "Order Status",          sortable: true  },
+      { key: "status",          label: "Order Status",          sortable: true  },  
     ];
 
     // Create a mapping of lowercase column keys to their actual keys (after spelling corrections)
@@ -1377,6 +1381,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                   {[
                     { label: "Company Internal No", value: viewOrderModal.order.companyinternalno || viewOrderModal.order.companyInternalNo },
                     { label: "SAP Material No",     value: viewOrderModal.order.sapmaterialno || viewOrderModal.order.sapMaterialNo },
+                    { label: "SAP Order No",        value: viewOrderModal.order.sapOrderNumber },
                     { label: "Expiry Date",         value: formatToDDMMYY(viewOrderModal.order.expiryDate) },
                     { label: "Order Date",          value: formatToDDMMYY(viewOrderModal.order.orderdate) },
                   ].map(({ label, value }) => (

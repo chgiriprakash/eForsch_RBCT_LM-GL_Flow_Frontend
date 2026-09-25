@@ -90,6 +90,7 @@ const initialProductData = {
 
 const GeneralInventory = () => {
   const userRole = JSON.parse(localStorage.getItem("user") || "{}");
+  const isLabManagement = userRole.role?.toLowerCase() === "labmgmt" || userRole.role?.toLowerCase() === "labmanager";
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -124,7 +125,7 @@ const GeneralInventory = () => {
           label: "Product Name",
           sortable: true,
           hidden: false,
-          onClick: (row: Product) => openProductDetails(row),
+          onClick: (row: Product) => openProductDetails(row), 
         },
         { key: "companyname",      label: "Company",                  sortable: true,  hidden: false },
         { key: "catalogue",        label: "Article Number",            sortable: true,  hidden: false },
@@ -438,15 +439,17 @@ const normalizeKeysAndFixSpelling = (
     });
 
     // Add Action column with Delete button
-    normalizedItem["action"] = (
-      <button
-        className="btn btn-danger btn-sm"
-        style={{ padding: "4px 10px" }}
-        onClick={() => handleDelete(normalizedItem)}
-      >
-        Delete
-      </button>
-    );
+    if (isLabManagement) {
+      normalizedItem["action"] = (
+        <button
+          className="btn btn-danger btn-sm"
+          style={{ padding: "4px 10px" }}
+          onClick={() => handleDelete(normalizedItem)}
+        >
+          Delete
+        </button>
+      );
+    }
 
     return normalizedItem;
   });
@@ -462,7 +465,9 @@ const normalizeKeysAndFixSpelling = (
     normalizedColumns.push({ key: "fileName", label: "Attachment" });
   }
 
-  normalizedColumns.push({ key: "action", label: "Action" });
+  if (isLabManagement) {
+    normalizedColumns.push({ key: "action", label: "Action" });
+  }
 
   return { list: normalizedList, columns: normalizedColumns, pagination };
 };
