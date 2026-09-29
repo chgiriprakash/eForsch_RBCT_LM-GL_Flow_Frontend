@@ -239,7 +239,9 @@ const addOrderFineChemicalFormConfig = (
         id: "attachment",
         label: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year”",
         type: "file",
-       // helpText: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year”",
+        multiple: true,
+        maxFiles: 5,
+        helpText: "You can attach up to 5 files.",
         validation: { required: true },
     },
     // {

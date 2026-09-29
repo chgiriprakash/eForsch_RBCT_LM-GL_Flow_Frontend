@@ -358,7 +358,7 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
     // VERY IMPORTANT ✅
     payload.append("inventory", JSON.stringify(formValues));
 filesArray.forEach((file) => {
-      payload.append("file", file, file.name); // Sends all files to the backend
+      payload.append("files", file, file.name); // Sends all files to the backend (backend @RequestPart("files"))
     });
    // if (file) {
     //  payload.append("file", file, file.name);

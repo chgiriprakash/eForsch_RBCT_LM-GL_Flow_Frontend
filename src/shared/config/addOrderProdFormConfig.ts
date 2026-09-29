@@ -136,6 +136,9 @@ const addOrderProdFormConfig = (
       id: "attachment",
       label: "Please upload SDS in DE and/or EN here",
       type: "file",
+      multiple: true,
+      maxFiles: 5,
+      helpText: "You can attach up to 5 files.",
       validation: { required: false },
   },
 ];

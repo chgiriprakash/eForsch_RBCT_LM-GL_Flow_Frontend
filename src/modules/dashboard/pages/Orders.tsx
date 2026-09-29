@@ -10,6 +10,8 @@ import addOrderFormConfig from "../../../shared/config/addOrderFormConfig";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
 import UpdateOrderFormConfigFine from '../../../shared/config/UpdateOrderFormConfigFine';
 import UpdateOrderFormConfig from '../../../shared/config/UpdateOrderFormConfig';
+import AttachmentList from '../../../shared/components/AttachmentList';
+import AttachmentManager from '../../../shared/components/AttachmentManager';
 
 // Define interface for a column in the table
 interface OrderColumn {
@@ -220,7 +222,7 @@ const Orders = () => {
  const [deliveryForm, setDeliveryForm] = useState<{ storageLocation: string; orderType: string; barcodes: string[] }>({ storageLocation: "", orderType: "bulk", barcodes: [] });
  const [generalDeliveryModal, setGeneralDeliveryModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
   const [generalDeliveryTextField, setGeneralDeliveryTextField] = useState("");
-  const [generalDeliveryBarcodes, setGeneralDeliveryBarcodes] = useState<string[]>([]);
+  const [, setGeneralDeliveryBarcodes] = useState<string[]>([]);
 const [orderedModal, setOrderedModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
   const [sapOrderNumber, setSapOrderNumber] = useState("");
 
@@ -1047,8 +1049,9 @@ const handleAddGenerlaiInventory = async (formData: Record<string, any>) => {
     formData.role = userRole.role;
     
     const rawAttachmentGI = formData.attachment;
-  const fileObjGI: File | null = Array.isArray(rawAttachmentGI) && rawAttachmentGI.length > 0
-    ? rawAttachmentGI[0] : rawAttachmentGI instanceof File ? rawAttachmentGI : null;
+  const filesArrayGI: File[] = Array.isArray(rawAttachmentGI)
+    ? rawAttachmentGI.filter((f: any) => f instanceof File)
+    : rawAttachmentGI instanceof File ? [rawAttachmentGI] : [];
   delete formData.attachment;
   try {
     console.log("Adding General Inventory with data:", formData);
@@ -1074,10 +1077,10 @@ const handleAddGenerlaiInventory = async (formData: Record<string, any>) => {
 
     payload.append("order", JSON.stringify(mappedOrder));
 
-    if (fileObjGI) {
-      payload.append("file", fileObjGI, fileObjGI.name);
-    }
-    
+    filesArrayGI.forEach((file) => {
+      payload.append("files", file, file.name);
+    });
+
     await dispatch(addOrder(payload)).unwrap();
     alert("General Inventory Order added successfully!");
     setIsModalGIOpen(false);
@@ -1091,8 +1094,9 @@ const handleAddGenerlaiInventory = async (formData: Record<string, any>) => {
 // ✅ Handle adding a Fine Chemical order
 const handleAddFinechemicalt = async (formData: Record<string, any>) => {
   const rawAttachmentFC = formData.attachment;
-  const fileObj: File | null = Array.isArray(rawAttachmentFC) && rawAttachmentFC.length > 0
-    ? rawAttachmentFC[0] : rawAttachmentFC instanceof File ? rawAttachmentFC : null;
+  const filesArrayFC: File[] = Array.isArray(rawAttachmentFC)
+    ? rawAttachmentFC.filter((f: any) => f instanceof File)
+    : rawAttachmentFC instanceof File ? [rawAttachmentFC] : [];
   delete formData.attachment;
     
   try {
@@ -1119,9 +1123,9 @@ const handleAddFinechemicalt = async (formData: Record<string, any>) => {
 
     payload.append("order", JSON.stringify(mappedOrder));  
 
-    if (fileObj) {
-      payload.append("file", fileObj, fileObj.name); // attach file if present
-    }
+    filesArrayFC.forEach((file) => {
+      payload.append("files", file, file.name); // backend @RequestPart("files")
+    });
 
     await dispatch(addFineChemicalOrder(payload)).unwrap();
     alert("Fine Chemical Order added successfully!");
@@ -1201,6 +1205,28 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
           existingFileNames={existingAttachmentName ? { attachment: existingAttachmentName } : {}}
           disabled={isOrderLocked}
         />
+
+        {/* Attachments — list/add/remove for existing orders.
+            Editable for scientist / lab management / group leader before LM approval;
+            download-only once approved (isOrderLocked) or for purchase department. */}
+        {selectedOrder?.orderId ? (
+          <div style={{ marginTop: 16, borderTop: "1px solid #eee", paddingTop: 12 }}>
+            <label className="col-form-label label" style={{ fontWeight: 600 }}>
+              <i className="fa fa-paperclip me-2" />Attachments
+            </label>
+            <AttachmentManager
+              module="orders"
+              id={selectedOrder.orderId}
+              canEdit={
+                !isOrderLocked &&
+                ["scientist", "labmgmt", "groupleader", "admin"].includes(
+                  userRole?.role?.toLowerCase()
+                )
+              }
+              maxFiles={5}
+            />
+          </div>
+        ) : null}
       </Modal>
 
 
@@ -1448,6 +1474,18 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                   </div>
                 </div>
               )}
+
+              {/* Attachments */}
+              <div className="pd-card" style={{ gridColumn: "1 / 4" }}>
+                <div className="pd-card-header"><i className="fa fa-paperclip pd-card-icon" /><span>Attachments</span></div>
+                <div className="pd-attachment">
+                  <AttachmentList
+                    module="orders"
+                    id={viewOrderModal.order.orderId}
+                    legacyFileName={viewOrderModal.order.fileName || viewOrderModal.order.safetydatasheet}
+                  />
+                </div>
+              </div>
 
             </div>
 
