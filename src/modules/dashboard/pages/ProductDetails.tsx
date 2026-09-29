@@ -20,6 +20,7 @@ import {  addOrder,
 import addOrderProdFormConfig from "../../../shared/config/addOrderProdFormConfig";
 import updateProductFormGenInvConfig from "../../../shared/config/updateProductFormGenInvConfig.";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
+import AttachmentList from "../../../shared/components/AttachmentList";
 
 const ProductDetails = () => {
   const userRole = JSON.parse(localStorage.getItem("user") || "{}");
@@ -480,7 +481,7 @@ const handleShareSubmit = async (
       const payload = new FormData();
       payload.append("order", JSON.stringify(orderData));
       if (fileObj) {
-        payload.append("file", fileObj, fileObj.name);
+        payload.append("files", fileObj, fileObj.name);
       }
 
       await dispatch(addOrder(payload)).unwrap();
@@ -738,17 +739,12 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
                   <span>Attachment</span>
                 </div>
                 <div className="pd-attachment">
-                  {product.filename || product.fileName ? (
-                    <>
-                      <i className="fa fa-file-pdf pd-file-icon" />
-                      <span className="pd-filename">{product.filename || product.fileName}</span>
-                      <button className="pd-btn pd-btn-outline pd-btn-sm" onClick={handleDownloadAttachment}>
-                        <i className="fa fa-download me-1" /> Download
-                      </button>
-                    </>
-                  ) : (
-                    <span className="pd-no-file">No attachment</span>
-                  )}
+                  <AttachmentList
+                    module="inventory"
+                    id={product.productId || product.productid || id}
+                    legacyFileName={product.filename || product.fileName}
+                    onDownloadLegacy={handleDownloadAttachment}
+                  />
                 </div>
               </div>
 

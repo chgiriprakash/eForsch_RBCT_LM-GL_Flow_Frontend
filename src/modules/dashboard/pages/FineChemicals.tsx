@@ -450,7 +450,7 @@ const openProductDetails = (row: any) => {
     payload.append("finechemical", JSON.stringify(formData));
 
     if (fileObj) {
-      payload.append("file", fileObj, fileObj.name);
+      payload.append("files", fileObj, fileObj.name);
     }
 
     try {

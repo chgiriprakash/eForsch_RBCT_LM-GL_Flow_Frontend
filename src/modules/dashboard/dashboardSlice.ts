@@ -140,7 +140,7 @@ export const orderedPOD = createThunk(
   "dashboard/ordered",
   ({ id, user, sapOrderNumber }: { id: number; user: { email: string; name: string; role: string; groupName: string }; sapOrderNumber?: string; }) =>
     axiosClient
-      .get(`api/orders/ordered/${id}?page=1&size=10000&id=10&email=${user.email}&name=${user.name}&role=${user.role}&sapOrderNumber=${sapOrderNumber || ''}`)
+      .get(`api/orders/ordered/${id}?page=1&size=10000&id=10&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name)}&role=${encodeURIComponent(user.role)}&sapOrderNumber=${encodeURIComponent(sapOrderNumber || '')}`)
       .then((res) => res.data)
 );
 

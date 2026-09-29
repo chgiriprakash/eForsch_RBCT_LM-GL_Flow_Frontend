@@ -21,6 +21,7 @@ import {
 } from "../dashboardSlice";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
+import AttachmentList from "../../../shared/components/AttachmentList";
 const getPhraseList = (phrases: any): string[] => {
   if (Array.isArray(phrases)) {
     return phrases;
@@ -537,7 +538,7 @@ const FineChemicalsDetails = () => {
         payload.append("order", JSON.stringify(orderData));
 
         if (fileObj) {
-          payload.append("file", fileObj, fileObj.name);
+          payload.append("files", fileObj, fileObj.name);
         }
 
         await dispatch(addFineChemicalOrder(payload)).unwrap();
@@ -935,17 +936,12 @@ const FineChemicalsDetails = () => {
                   <span>Attachment</span>
                 </div>
                 <div className="pd-attachment">
-                  {product.filename || product.fileName ? (
-                    <>
-                      <i className="fa fa-file-pdf pd-file-icon" />
-                      <span className="pd-filename">{product.filename || product.fileName}</span>
-                      <button className="pd-btn pd-btn-outline pd-btn-sm" onClick={handleDownloadAttachment}>
-                        <i className="fa fa-download me-1" /> Download
-                      </button>
-                    </>
-                  ) : (
-                    <span className="pd-no-file">No attachment</span>
-                  )}
+                  <AttachmentList
+                    module="finechemical"
+                    id={product.productId || product.productid || id}
+                    legacyFileName={product.filename || product.fileName}
+                    onDownloadLegacy={handleDownloadAttachment}
+                  />
                 </div>
               </div>
 
