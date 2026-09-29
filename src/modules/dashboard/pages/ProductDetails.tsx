@@ -84,6 +84,7 @@ const [shareInitialValues] =
     // groupName: product.groupName || userRole.groupName || "",
     companyinternalno: product.companyinternalno || "",
     sapmaterialno: product.sapmaterialno || "",
+    sapOrderNumber: product.sapOrderNumber || "",
     weightvolsubqty: product.weightvolsubqty || product.wvsubqty || "",
     budgetno: product.budgetno ? `${product.budgetno}` : "",
     concentration: product.concentration || "",
@@ -142,6 +143,7 @@ const [shareInitialValues] =
     groupName: formData.groupName || "",
     companyinternalno: formData.companyinternalno?.trim() || "",
     sapmaterialno: formData.sapmaterialno?.trim() || "",
+    sapOrderNumber: formData.sapOrderNumber?.trim() || "",
     weightvolsubqty: formData.weightvolsubqty?.trim() || "",
     budgetno: formData.budgetno?.trim() || "",
     concentration: formData.concentration?.trim() || "",
@@ -665,6 +667,10 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
                   <div className="pd-field">
                     <span className="pd-label">SAP Material No</span>
                     <span className="pd-value">{getValue(product.sapmaterialno)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">SAP Order Number</span>
+                    <span className="pd-value">{getValue(product.sapOrderNumber)}</span>
                   </div>
                   {product.sourceOrderId && (
                     <div className="pd-field">
