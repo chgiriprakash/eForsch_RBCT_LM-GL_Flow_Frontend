@@ -309,7 +309,7 @@ export const getFineChemicalById = createThunk("dashboard/finechemical/getFineCh
 
 // 🟢 CRUD operations for Fine Chemicals
 export const fetchFineChemicals = createThunk("dashboard/finechemical/getFineChemicalInventory", (user) =>
-  axiosClient.post("api/finechemical/getFineChemicalInventory?page=1&limit=10&sortBy=createdAt&order=desc", user).then((res) => res.data)
+  axiosClient.post("api/finechemical/getFineChemicalInventory?page=1&limit=50&sortBy=createdAt&order=desc", user).then((res) => res.data)
 );
 
 export const addFineChemicals = createThunk("dashboard/finechemical/addFineChemical", (product: any) =>

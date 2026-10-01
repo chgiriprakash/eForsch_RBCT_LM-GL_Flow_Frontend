@@ -83,7 +83,7 @@ interface ProductListResponse {
 // Default values
 const defaultPagination: Pagination = {
   currentPage: 1,
-  pageSize: 10,
+  pageSize: 50,
   totalPages: 1,
   totalRecords: 0,
 };
@@ -149,6 +149,8 @@ const FineChemicals = () => {
       const payloadUser = {
         ...userRole,
         groupName: getActiveGroupName(userRole),
+        pagesize: 50,
+        page: 1,
       };
       const result = await dispatch(fetchFineChemicals(payloadUser)).unwrap();
       console.log("Fetched Fine Chemicals:", result);

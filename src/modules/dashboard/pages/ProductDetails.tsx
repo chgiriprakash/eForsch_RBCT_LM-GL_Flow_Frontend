@@ -154,9 +154,6 @@ const [shareInitialValues] =
     expirydate: formData.expirydate,
     addedby: formData.addedby || "",
     shared: toBoolean(formData.shared),
-    fileName: formData.fileName || fileName,
-    fileType : formData.fileType || fileType,
-    fileContent: formData.fileContent || [],
   };
 
   // Remove temporary frontend-only fields
