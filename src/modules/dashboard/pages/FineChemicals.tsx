@@ -120,6 +120,7 @@ const initialProductData: Product = {
 
 const FineChemicals = () => {
   const userRole = JSON.parse(localStorage.getItem("user") || "{}");
+  const isLabMgmt = userRole.role?.includes("labMgmt");
   const navigate = useNavigate();
   const getActiveGroupName = (user: any) => {
     if (user.groupName && user.groupName.trim() !== "") {
@@ -143,6 +144,8 @@ const FineChemicals = () => {
   const [storageLocationOptions, setStorageLocationOptions] = useState<string[]>([]);
   const [hPhraseOptions, setHPhraseOptions] = useState<Array<{ label: string; key: string }>>([]);
   const [pPhraseOptions, setPPhraseOptions] = useState<Array<{ label: string; key: string }>>([]);
+  const today = new Date();
+  const currentDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   
   const fetchData = async () => {
     try {
@@ -186,9 +189,10 @@ const FineChemicals = () => {
         { key: "price",        label: "Price",               sortable: true,  hidden: false },
         { key: "budgetno",     label: "Budget Number",       sortable: true,  hidden: false },
         { key: "orderedby",    label: "Ordered By",          sortable: false, hidden: false },
-        { key: "action",       label: "Action",              sortable: false, hidden: false },
       ];
-
+      if (isLabMgmt) {
+        updatedColumns.push({ key: "action", label: "Action", sortable: false, hidden: false });
+      }
       setData({
         list: normalizedData.list || [],
         columns: updatedColumns,
@@ -552,7 +556,8 @@ const normalizeKeysAndFixSpelling = (data: any) => {
     normalizedItem.srno = index + 1;
 
     // Add Action column
-    normalizedItem["action"] = (
+    if (isLabMgmt) {
+      normalizedItem["action"] = (
       <button
         className="btn btn-danger btn-sm"
         style={{ padding: "4px 10px" }}
@@ -561,7 +566,7 @@ const normalizeKeysAndFixSpelling = (data: any) => {
         Delete
       </button>
     );
-
+  }
     return normalizedItem;
   });
 
@@ -586,11 +591,12 @@ const normalizeKeysAndFixSpelling = (data: any) => {
     .filter((column: any) => column.key.toLowerCase() !== "filetype");
 
   // ✅ Add Action column
+  if (isLabMgmt) {
   normalizedColumns.push({
     key: "action",
     label: "Action",
   });
-
+  }
   return { list: normalizedList, columns: normalizedColumns, pagination };
 };
 
@@ -664,7 +670,10 @@ const downloadAttachment = async (row: any) => {
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Fine Chemical Product">
-        <ReusableForm formConfig={addFineChemicalsFormConfig(budget || [], companyOptions, storageLocationOptions, hPhraseOptions, pPhraseOptions)} initialValues={initialProductData} onSubmit={handleFormSubmit} onFieldChange={handleCompanyFieldChange} />
+        <ReusableForm formConfig={addFineChemicalsFormConfig(budget || [], companyOptions, storageLocationOptions, hPhraseOptions, pPhraseOptions)} 
+        initialValues={{...initialProductData, orderdate: currentDate}}  
+        onSubmit={handleFormSubmit} 
+        onFieldChange={handleCompanyFieldChange} />
       </Modal>
     </>
   );

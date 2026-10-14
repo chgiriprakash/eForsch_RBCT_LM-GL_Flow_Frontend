@@ -156,7 +156,7 @@ const initialGeneralInventoryData = {
   sapmaterialno: "",
   weightvolsubqty: "",
   budgetno: "",
-  orderdate: "", 
+  orderdate: " new Date().toISOString().split('T')[0]", 
   expiryDate: "",
   // qtypriceordered: "",
   concentration: "",
@@ -1175,7 +1175,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
         onClose={() => { setIsModalOpen(false); setExistingAttachmentName(null); setIsOrderLocked(false); }}
         title={`${isOrderLocked ? "View" : "Update"} ${isFineChemical(selectedOrder) ? "Fine Chemical" : "General Inventory"} Order`}
       >
-        {isOrderLocked && (
+        {/*{isOrderLocked && (
           <div style={{
             background: "#fff3cd",
             border: "1px solid #ffc107",
@@ -1190,9 +1190,9 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
             gap: "8px",
           }}>
             <i className="fa fa-lock" />
-            This order has been approved by Lab Management. You cannot make any changes.
+           this order has been locked for editing. You can view the details but cannot make changes.
           </div>
-        )}
+        )*/}
         <ReusableForm
           formConfig={
             isFineChemical(selectedOrder)
@@ -1233,7 +1233,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
       <Modal isOpen={isModalGIOpen} onClose={() => setIsModalGIOpen(false)} title={"Add General Inventory Order"}>
         <ReusableForm
           formConfig={addOrderFormConfig(budget || [], companyOptions)}
-          initialValues={initialGeneralInventoryData || {}}
+          initialValues={{ ...initialGeneralInventoryData, orderdate: new Date().toLocaleDateString('en-CA') }}
           onSubmit={handleAddGenerlaiInventory}
           onFieldChange={handleCompanyFieldChange}
         />
@@ -1242,7 +1242,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
       <Modal isOpen={isModalFCOpen} onClose={() => setIsModalFCOpen(false)} title="Add Fine-Chemicals Order">
         <ReusableForm
           formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions, storageLocationOptions, hPhraseOptions, pPhraseOptions)}
-          initialValues={initialFineChemicalData || {}}
+          initialValues={{ ...initialGeneralInventoryData, orderdate: new Date().toLocaleDateString('en-CA') }}
           onSubmit={handleAddFinechemicalt}
           onFieldChange={handleCompanyFieldChange}
         />
@@ -1369,13 +1369,13 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                 onClick={() => setViewOrderModal({ open: false, order: null })}>×</button>
             </div>
 
-            {/* Lock banner for scientists viewing a lab-approved order */}
+            {/* Lock banner for scientists viewing a lab-approved order 
             {userRole?.role?.toLowerCase() !== "labmgmt" && viewOrderModal.order.labApproved && (
               <div style={{ background: "#fff3cd", border: "1px solid #ffc107", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#856404", fontWeight: 500, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "8px" }}>
                 <i className="fa fa-lock" />
                 This order has been approved by Lab Management. You cannot make any changes.
               </div>
-            )}
+            )}*}
 
             {/* Cards — 3-column grid */}
             <div className="pd-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>

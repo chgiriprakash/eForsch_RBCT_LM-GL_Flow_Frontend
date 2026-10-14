@@ -80,6 +80,8 @@ const FineChemicalsDetails = () => {
       expirydate: "expiryDate",
       companyinternalno: "companyInternalNo",
       sapmaterialno: "sapMaterialNo",
+      saporderno: "sapOrderNo",
+      sapordernumber: "sapOrderNo",
       weightvolsubqty: "wvsubqty",
       budgetno: "budgetno",
       orderdate: "orderdate",
@@ -146,6 +148,7 @@ const FineChemicalsDetails = () => {
     expiryDate: product.expiryDate || "",
     companyInternalNo: product.companyInternalNo || "",
     sapMaterialNo: product.sapMaterialNo || "",
+    sapOrderNo: product.sapOrderNo || product.saporderno || "",
     weightvolsubqty: product.wvsubqty || "",
     budgetno: product.budgetno || "",
     orderdate: product.orderdate || "",
@@ -186,6 +189,7 @@ const FineChemicalsDetails = () => {
       expiryDate: product.expiryDate,
       companyInternalNo: product.companyInternalNo || product.companyinternalno || "",
       sapMaterialNo: product.sapMaterialNo || product.sapmaterialno || "",
+      sapOrderNo: product.sapOrderNo || product.saporderno || "",
       wvsubqty: product.wvsubqty || product.weightvolsubqty || "",
       budgetno: product.budgetno || "",
       orderdate: product.orderdate,
@@ -666,9 +670,11 @@ const FineChemicalsDetails = () => {
                 <Button className="pd-btn pd-btn-outline" onClick={handleShare}>
                   <i className="fa fa-share-alt me-1" /> Share
                 </Button>
-                <Button className="pd-btn pd-btn-outline" onClick={handleUpdate}>
-                  <i className="fa fa-edit me-1" /> Update
-                </Button>
+                {userRole?.role === "labMgmt" && (
+                  <Button className="pd-btn pd-btn-outline" onClick={handleUpdate}>
+                    <i className="fa fa-edit me-1" /> Update
+                  </Button>
+                )}
                 <Button className="pd-btn pd-btn-primary" onClick={handleOrder}>
                   <i className="fa fa-plus me-1" /> Add Order
                 </Button>
@@ -725,6 +731,10 @@ const FineChemicalsDetails = () => {
                   <div className="pd-field">
                     <span className="pd-label">SAP Material No</span>
                     <span className="pd-value">{getValue(product.sapMaterialNo)}</span>
+                  </div>
+                  <div className="pd-field">
+                    <span className="pd-label">SAP Order No</span>
+                    <span className="pd-value">{getValue(product.sapOrderNo)}</span>
                   </div>
                   {product.sourceOrderId && (
                     <div className="pd-field">

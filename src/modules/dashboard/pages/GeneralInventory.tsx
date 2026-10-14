@@ -104,6 +104,8 @@ const GeneralInventory = () => {
   const [companies, setCompanies] = useState<Array<{ id: number; companyNo: string; companyName: string }>>([]);
   const [companyOptions, setCompanyOptions] = useState<Array<{ label: string; key: string }>>([]);
   console.log("GeneralInventory - groupOptions:", groupOptions);
+  const today = new Date();
+  const currentDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   const fetchData = async () => {
     try {
@@ -357,7 +359,7 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
 
     // VERY IMPORTANT ✅
     payload.append("inventory", JSON.stringify(formValues));
-filesArray.forEach((file) => {
+      filesArray.forEach((file) => {
       payload.append("files", file, file.name); // Sends all files to the backend (backend @RequestPart("files"))
     });
    // if (file) {
@@ -559,7 +561,10 @@ const downloadAttachment = async (row: any) => {
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Product">
-        <ReusableForm formConfig={addProductFormConfig(budget || [], companyOptions)} initialValues={initialProductData} onSubmit={handleFormSubmit} onFieldChange={handleCompanyFieldChange} />
+        <ReusableForm formConfig={addProductFormConfig(budget || [], companyOptions)} 
+        initialValues={{...initialProductData, orderdate: currentDate}} 
+        onSubmit={handleFormSubmit} 
+        onFieldChange={handleCompanyFieldChange} />
       </Modal>
     </>
   );
