@@ -102,6 +102,9 @@ const Budget = () => {
   };
 
   const handleDelete = async (item: BudgetRow) => {
+    const isConfirmed = window.confirm("Are you sure you want to delete this budget?");
+    if (!isConfirmed) return; 
+
     const budgetObj = {
       budgetId: item.budgetId,
       user: userRole,

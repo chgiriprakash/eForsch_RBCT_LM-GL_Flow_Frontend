@@ -680,7 +680,7 @@ const enhanceList = (list: Order[], userRole: any) => {
       if (val === false) {
         return <i className="fa fa-times-circle text-danger"></i>;
       }
-      return ""; // Returns empty string if null, undefined, or pending
+      return ""; 
     };
 
     return {
