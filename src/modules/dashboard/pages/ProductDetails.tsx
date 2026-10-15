@@ -68,7 +68,8 @@ const [shareInitialValues] =
       if (result) {
         setProduct(result.data);
         setUpdateProduct(mapToModifyApiPayload(result.data));
-        setOrder(mapProductToOrder(result.data, userRole));
+        // Seed the "Add Order from inventory" form with today's order date
+        setOrder({ ...mapProductToOrder(result.data, userRole), orderdate: new Date().toLocaleDateString("en-CA") });
       }
     } catch (err) {
       console.error("Error fetching product:", err);
@@ -120,19 +121,6 @@ const [shareInitialValues] =
   // Convert "Yes"/"No" string to boolean
   const toBoolean = (value: any): boolean =>
     value === "Yes" || value === true ? true : false;
-
-  // Extract file if uploaded
-  let fileName = formData.fileName || "";
-  let fileType = formData.fileType || "";
-  let fileContent: string[] = [];
-  console.log("ProductDetails - mapToModifyApiPayload - fileContent:", fileContent);
-
-  if (formData.attachment instanceof File) {
-    const file = formData.attachment;
-    fileName = file.name;
-    fileType = file.type;
-    // fileContent will be filled by converting the file to base64 later (async)
-  }
 
   // Build payload based on backend schema
   const payload = {

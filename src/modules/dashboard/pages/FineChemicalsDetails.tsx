@@ -261,7 +261,8 @@ const FineChemicalsDetails = () => {
         const normalized = normalizeKeysToFormIds(result.data.list[0]);
         setProduct(normalized);
         setupdateProd(mapToModifyApiPayload(normalized));
-        setOrder(mapFineProductToOrder(normalized, userRole));
+        // Seed the "Add Order from inventory" form with today's order date
+        setOrder({ ...mapFineProductToOrder(normalized, userRole), orderdate: new Date().toLocaleDateString("en-CA") });
       }
     } catch (err) {
       console.error("Error fetching product:", err);

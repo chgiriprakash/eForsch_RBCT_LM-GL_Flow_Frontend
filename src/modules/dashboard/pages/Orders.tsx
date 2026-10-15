@@ -156,7 +156,7 @@ const initialGeneralInventoryData = {
   sapmaterialno: "",
   weightvolsubqty: "",
   budgetno: "",
-  orderdate: " new Date().toISOString().split('T')[0]", 
+  orderdate: "",
   expiryDate: "",
   // qtypriceordered: "",
   concentration: "",
@@ -1242,7 +1242,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
       <Modal isOpen={isModalFCOpen} onClose={() => setIsModalFCOpen(false)} title="Add Fine-Chemicals Order">
         <ReusableForm
           formConfig={addOrderFineChemicalFormConfig(budget || [], companyOptions, storageLocationOptions, hPhraseOptions, pPhraseOptions)}
-          initialValues={{ ...initialGeneralInventoryData, orderdate: new Date().toLocaleDateString('en-CA') }}
+          initialValues={{ ...initialFineChemicalData, orderdate: new Date().toLocaleDateString('en-CA') }}
           onSubmit={handleAddFinechemicalt}
           onFieldChange={handleCompanyFieldChange}
         />
