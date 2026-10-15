@@ -513,12 +513,12 @@ const enhanceColumns = (columns: OrderColumn[], userRole: any) => {
 
   // ✅ Add LM Approved column
   if (!updatedColumns.some((col) => col.key === "labApproved")) {
-    updatedColumns.push({ key: "labApproved", label: "LM Approved", sortable: false, isDate: false, hidden: false, onClick: undefined });
+    updatedColumns.push({ key: "labApproved", label: "LM Approval", sortable: false, isDate: false, hidden: false, onClick: undefined });
   }
 
   // ✅ Add GL Approved column
   if (!updatedColumns.some((col) => col.key === "adminApproved")) {
-    updatedColumns.push({ key: "adminApproved", label: "GL Approved", sortable: false, isDate: false, hidden: false, onClick: undefined });
+    updatedColumns.push({ key: "adminApproved", label: "GL Approval", sortable: false, isDate: false, hidden: false, onClick: undefined });
   }
 
   // ✅ Role-based action column
@@ -670,17 +670,21 @@ const enhanceList = (list: Order[], userRole: any) => {
       ) : null;
     }
 
-    const renderApprovalIcon = (val: boolean | null | undefined) => {
-      if (val === true) {
-        return <i className="fa fa-check-circle text-success"></i>;
-      }
-      if (item.status?.toLowerCase() === "pending") {
-        return "";
-      }
-      if (val === false) {
-        return <i className="fa fa-times-circle text-danger"></i>;
-      }
-      return ""; 
+    const isApprovedVal = (v: any) => v === true || v === "true" || v === 1;
+    const isRejectedStatus = item.status?.toLowerCase() === "rejected";
+
+    // LM column: green if LM approved, red if LM rejected, else empty (pending)
+    const renderLmApprovalIcon = () => {
+      if (isApprovedVal(item.labApproved)) return <i className="fa fa-check-circle text-success"></i>;
+      if (isRejectedStatus) return <i className="fa fa-times-circle text-danger"></i>; // LM rejected
+      return "";
+    };
+    // GL column: green if GL approved, red ONLY when GL itself rejected (i.e. LM had approved first);
+    // empty when LM rejected (GL never acted) or still pending
+    const renderGlApprovalIcon = () => {
+      if (isApprovedVal(item.adminApproved)) return <i className="fa fa-check-circle text-success"></i>;
+      if (isApprovedVal(item.labApproved) && isRejectedStatus) return <i className="fa fa-times-circle text-danger"></i>; // GL rejected
+      return "";
     };
 
     return {
@@ -689,8 +693,8 @@ const enhanceList = (list: Order[], userRole: any) => {
       fileName: item.fileName ? item.fileName : <i className="fa fa-paperclip"></i>,
       orderedby: item.orderedby || item.createdBy || item.addedby || "",
       orderdate: formatToDDMMYY(item.orderdate),
-      adminApproved: renderApprovalIcon(item.adminApproved),
-      labApproved: renderApprovalIcon(item.labApproved),
+      adminApproved: renderGlApprovalIcon(),
+      labApproved: renderLmApprovalIcon(),
       _inventoryTypeRaw: typeof item.inventoryType === "string" ? item.inventoryType : "",
       inventoryType:
         item.inventoryType === "generalInventory"
@@ -1445,8 +1449,23 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                   {[
                     { label: "Group Name",   value: viewOrderModal.order.groupName },
                     { label: "Added By",     value: viewOrderModal.order.createdBy || viewOrderModal.order.userName },
-                    { label: "LM Approved",  value: viewOrderModal.order.labApproved != null ? (viewOrderModal.order.labApproved ? "Yes" : "No") : null },
-                    { label: "GL Approved",  value: viewOrderModal.order.adminApproved != null ? (viewOrderModal.order.adminApproved ? "Yes" : "No") : null },
+                    { label: "LM Approval",  value: (() => {
+                        const o = viewOrderModal.order;
+                        const approved = o.labApproved === true || o.labApproved === "true" || o.labApproved === 1;
+                        const rejected = o.status?.toLowerCase() === "rejected";
+                        if (approved) return "Approved";
+                        if (rejected) return "Rejected";   // LM rejected
+                        return "Pending";
+                      })() },
+                    { label: "GL Approval",  value: (() => {
+                        const o = viewOrderModal.order;
+                        const glApproved = o.adminApproved === true || o.adminApproved === "true" || o.adminApproved === 1;
+                        const lmApproved = o.labApproved === true || o.labApproved === "true" || o.labApproved === 1;
+                        const rejected = o.status?.toLowerCase() === "rejected";
+                        if (glApproved) return "Approved";
+                        if (lmApproved && rejected) return "Rejected";   // GL rejected (only after LM approved)
+                        return "Pending";
+                      })() },
                   ].map(({ label, value }) => (
                     <div key={label} className="pd-field">
                       <span className="pd-label">{label}</span>
