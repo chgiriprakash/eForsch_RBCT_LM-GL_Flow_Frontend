@@ -371,7 +371,7 @@ const fetchPodeptData = async () => {
   const fetchHPhrases = async () => {
     try {
       const result = await dispatch(getHPhrases()).unwrap();
-      setHPhraseOptions(result.map((p: any) => ({ label: `${p.phraseCode} - ${p.phraseDescription}`, key: p.phraseCode })));
+      setHPhraseOptions([{ label: "None", key: "None" }, ...result.map((p: any) => ({ label: `${p.phraseCode} - ${p.phraseDescription}`, key: p.phraseCode }))]);
     } catch (error) {
       console.error("Failed to fetch H phrases:", error);
     }
@@ -380,7 +380,7 @@ const fetchPodeptData = async () => {
   const fetchPPhrases = async () => {
     try {
       const result = await dispatch(getPPhrases()).unwrap();
-      setPPhraseOptions(result.map((p: any) => ({ label: `${p.phraseCode} - ${p.phraseDescription}`, key: p.phraseCode })));
+      setPPhraseOptions([{ label: "None", key: "None" }, ...result.map((p: any) => ({ label: `${p.phraseCode} - ${p.phraseDescription}`, key: p.phraseCode }))]);
     } catch (error) {
       console.error("Failed to fetch P phrases:", error);
     }

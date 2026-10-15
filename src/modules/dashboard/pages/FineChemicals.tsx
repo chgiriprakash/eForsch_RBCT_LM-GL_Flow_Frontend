@@ -275,7 +275,7 @@ const FineChemicals = () => {
   const fetchHPhrases = async () => {
     try {
       const result = await dispatch(getHPhrases()).unwrap();
-      setHPhraseOptions(result.map((h: any) => ({ label: `${h.phraseCode} - ${h.phraseDescription}`, key: h.phraseCode })));
+      setHPhraseOptions([{ label: "None", key: "None" }, ...result.map((h: any) => ({ label: `${h.phraseCode} - ${h.phraseDescription}`, key: h.phraseCode }))]);
     } catch (error) {
       console.error("Failed to fetch H-Phrases:", error);
     }
@@ -284,7 +284,7 @@ const FineChemicals = () => {
   const fetchPPhrases = async () => {
     try {
       const result = await dispatch(getPPhrases()).unwrap();
-      setPPhraseOptions(result.map((p: any) => ({ label: `${p.phraseCode} - ${p.phraseDescription}`, key: p.phraseCode })));
+      setPPhraseOptions([{ label: "None", key: "None" }, ...result.map((p: any) => ({ label: `${p.phraseCode} - ${p.phraseDescription}`, key: p.phraseCode }))]);
     } catch (error) {
       console.error("Failed to fetch P-Phrases:", error);
     }
