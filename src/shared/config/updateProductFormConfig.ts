@@ -269,12 +269,9 @@ const updateProductFormConfig = (
     options: ["Yes", "No"],
     validation: { required: false },
   },
-  {
-    id: "attachment",
-    label: "Please upload SDS in DE and/or EN here",
-    type: "file",
-    validation: { required: false },
-  },
+  // Attachments are managed on the details page via AttachmentManager
+  // (add/remove individual files), so the Update form no longer carries a
+  // single-file upload field.
 ];
 
 export default updateProductFormConfig;

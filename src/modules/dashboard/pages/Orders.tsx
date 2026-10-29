@@ -4,7 +4,9 @@ import DynamicTable from "../../../shared/components/DynamicTable";
 import Modal from "../../../shared/components/Modal";
 import useAppDispatch from "../../../shared/hooks/useAppDispatch";
 import { useAppSelector } from "../../../shared/hooks/customHooks";
-import { addOrder, approveAdmin, approvelabMgmt, deliveredPOD, downloadPDF, addFineChemicalOrder, editFineChemicalOrder, editOrder, fetchOrders, fetchOrdersOD, getBudgetList, getCompanies, getStorageLocations, getGroupNames, orderedPOD, rejectAdmin, rejectlabMgmt, getHPhrases, getPPhrases } from "../dashboardSlice";
+import { addOrder, approveAdmin, approvelabMgmt, deliveredPOD, downloadPDF, downloadAllOrders, addFineChemicalOrder, editFineChemicalOrder, editOrder, fetchOrders, fetchOrdersOD, getBudgetList, getCompanies, getStorageLocations, getGroupNames, orderedPOD, rejectAdmin, rejectlabMgmt, getHPhrases, getPPhrases } from "../dashboardSlice";
+import DateRangeFilter from "../../../shared/components/DateRangeFilter";
+import type { DateRange } from "../../../shared/components/DateRangeFilter";
 import ReusableForm from "../../../shared/components/ReusableForm";
 import addOrderFormConfig from "../../../shared/config/addOrderFormConfig";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
@@ -204,6 +206,8 @@ const Orders = () => {
   const [isOrderLocked, setIsOrderLocked] = useState(false);
   const [data, setData] = useState<OrderData | null>(null);
   const [origalData, setOrigalData] = useState<OrderData | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange>({ fromDate: "", toDate: "" });
+  const [exporting, setExporting] = useState(false);
   console.log("Orders - origalData state:", origalData);
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector((state: any) => state.dashboard);
@@ -232,9 +236,9 @@ const [orderedModal, setOrderedModal] = useState<{ open: boolean; order: Order |
   console.log("groupOptions:", groupOptions);
   
   console.log("selectedOrder:", selectedOrder);
-  const fetchData = async () => {
+  const fetchData = async (range: DateRange = dateRange) => {
   try {
-    const result = await dispatch(fetchOrders(userRole)).unwrap();
+    const result = await dispatch(fetchOrders({ fromDate: range.fromDate, toDate: range.toDate })).unwrap();
     const normalizedData = normalizeKeysAndCleanData(result.data);
 
     console.log("Normalized Data:", normalizedData);
@@ -782,7 +786,10 @@ const enhanceList = (list: Order[], userRole: any) => {
       (typeof rawRow.fileName === "string" && rawRow.fileName) ? rawRow.fileName :
       null;
 
-    setSelectedOrder(mapFormDataToOrder(row, userRole));
+    // Seed the edit form from the RAW order data (rawRow), not the display-enhanced
+    // row. The enhanced row reformats some fields (e.g. orderdate -> DD-MM-YYYY),
+    // which then fail to populate the form inputs.
+    setSelectedOrder(mapFormDataToOrder(rawRow, userRole));
     setExistingAttachmentName(existingFile);
     setIsOrderLocked(false); // Enables editable form controls
     setIsModalOpen(true);
@@ -1154,17 +1161,57 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
   }
 };
 
+  // Apply the chosen date range and re-fetch the orders from the server.
+  const handleApplyDateRange = (range: DateRange) => {
+    setDateRange(range);
+    fetchData(range);
+  };
+
+  // Export the currently-visible orders (same date range + group scope) to Excel.
+  const handleExportOrders = async () => {
+    try {
+      setExporting(true);
+      const exportGroup =
+        userRole?.role?.toLowerCase() === "groupleader" ? userRole?.groupName : "";
+      const url = await dispatch(
+        downloadAllOrders({
+          groupName: exportGroup,
+          fromDate: dateRange.fromDate,
+          toDate: dateRange.toDate,
+        })
+      ).unwrap();
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "orders.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Export failed:", e);
+      alert("Failed to export orders.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <>
       {error && <p>Error: {error}</p>}
 
       {!loading && data ? (
-        <> 
-        <div className="title-header"> 
-          <div className="btn-wrapper"> 
-            <Button onClick={addGeneralInventory} className="btn-color"> Add Order General Inventory </Button> 
-            <Button onClick={addFineChemical} className="btn-color"> Add Order Fine Chemical Inventory </Button> 
-          </div> 
+        <>
+        <div className="title-header">
+          <div className="btn-wrapper">
+            <Button onClick={addGeneralInventory} className="btn-color"> Add Order General Inventory </Button>
+            <Button onClick={addFineChemical} className="btn-color"> Add Order Fine Chemical Inventory </Button>
+          </div>
+          <div className="btn-wrapper" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <DateRangeFilter onApply={handleApplyDateRange} />
+            <Button onClick={handleExportOrders} className="btn-color" disabled={exporting}>
+              {exporting ? "Exporting…" : "Export to Excel"}
+            </Button>
+          </div>
         </div>
         <div className={`dynamic-class ${userRole?.role === 'podept' ? 'podept' : ''}`}>
           <DynamicTable data={data.list} columns={data.columns} pagination={data.pagination || defaultPagination} />

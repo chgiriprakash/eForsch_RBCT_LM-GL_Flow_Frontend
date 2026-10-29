@@ -18,10 +18,11 @@ import {
   getHPhrases,
   getPPhrases,
   downloadPDFFineChecm,
+  deleteFineChemicalBarcode,
 } from "../dashboardSlice";
 import addOrderFineChemicalFormConfig from "../../../shared/config/addOrderFineChemicalFormConfig";
 import sharingRequestFormConfig from "../../../shared/config/sharingRequestFormConfig";
-import AttachmentList from "../../../shared/components/AttachmentList";
+import AttachmentManager from "../../../shared/components/AttachmentManager";
 const getPhraseList = (phrases: any): string[] => {
   if (Array.isArray(phrases)) {
     return phrases;
@@ -266,6 +267,43 @@ const FineChemicalsDetails = () => {
       }
     } catch (err) {
       console.error("Error fetching product:", err);
+    }
+  };
+
+  // Only Lab Management can delete barcodes (consistent with edit/delete rules).
+  const isLabManager = userRole?.role === "labMgmt";
+
+  // Splits the stored comma-separated barcodeInfo into individual barcodes.
+  const splitBarcodes = (barcodeInfo: string): string[] =>
+    (barcodeInfo || "")
+      .split(",")
+      .map((b) => b.trim())
+      .filter((b) => b.length > 0);
+
+  // Deletes one barcode: archives that unit and lowers the quantity by one.
+  const handleDeleteBarcode = async (barcode: string) => {
+    const productId = product?.productId || product?.productid || id;
+    if (!productId) return;
+
+    const confirmed = window.confirm(
+      `Delete barcode "${barcode}"?\nThis archives that one unit and reduces the quantity by 1.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const result = await dispatch(
+        deleteFineChemicalBarcode({ productId: Number(productId), barcode })
+      ).unwrap();
+
+      if (result?.itemRemoved) {
+        alert("Last unit deleted. The item has been moved to archives.");
+        navigate("/inventory/fine-chemicals");
+      } else {
+        fetchData(); // refresh the barcode list and quantity
+      }
+    } catch (err) {
+      console.error("Delete barcode failed:", err);
+      alert("Failed to delete barcode.");
     }
   };
 
@@ -533,18 +571,18 @@ const FineChemicalsDetails = () => {
 
       try {
         const rawAttachment = formData.attachment;
-        const fileObj: File | null =
-          Array.isArray(rawAttachment) && rawAttachment.length > 0 ? rawAttachment[0] :
-          rawAttachment instanceof File ? rawAttachment : null;
+        const filesArray: File[] = Array.isArray(rawAttachment)
+          ? rawAttachment.filter((f: any) => f instanceof File)
+          : rawAttachment instanceof File ? [rawAttachment] : [];
         delete formData.attachment;
 
         const orderData = mapFineProductToOrder(formData, userRole);
         const payload = new FormData();
         payload.append("order", JSON.stringify(orderData));
 
-        if (fileObj) {
-          payload.append("files", fileObj, fileObj.name);
-        }
+        filesArray.forEach((file) => {
+          payload.append("files", file, file.name); // backend @RequestPart("files")
+        });
 
         await dispatch(addFineChemicalOrder(payload)).unwrap();
         alert("Order placed successfully!");
@@ -561,15 +599,9 @@ const FineChemicalsDetails = () => {
 
   const handleUpdateSubmit = async (formData: any) => {
     try {
-      const removedFiles: Record<string, boolean> = formData._removedFiles || {};
-
-      // ReusableForm stores files as File[] array — extract first file
-      const attachmentFile: File | null =
-        formData.attachment instanceof File ? formData.attachment :
-        Array.isArray(formData.attachment) && formData.attachment.length > 0 ? formData.attachment[0] :
-        null;
-
-      // Build clean JSON payload
+      // Attachments are no longer part of the Update form — they are managed
+      // separately on the details page via AttachmentManager. So this submit
+      // only sends the chemical's own fields and leaves existing files alone.
       const rawPayload = mapToModifyApiPayload(formData);
       const cleanPayload: any = {
         ...rawPayload,
@@ -577,27 +609,7 @@ const FineChemicalsDetails = () => {
         hazardousSubstance: rawPayload.hazardousSubstance === "Yes" ? true : rawPayload.hazardousSubstance === "No" ? false : rawPayload.hazardousSubstance,
         cmrSubstance:       rawPayload.cmrSubstance       === "Yes" ? true : rawPayload.cmrSubstance       === "No" ? false : rawPayload.cmrSubstance,
         skinResorptive:     rawPayload.skinResorptive     === "Yes" ? true : rawPayload.skinResorptive     === "No" ? false : rawPayload.skinResorptive,
-        fileContent: null,
       };
-
-      if (removedFiles["attachment"]) {
-        // User clicked ✕ Remove — clear file fields on backend
-        cleanPayload.fileName    = null;
-        cleanPayload.fileType    = null;
-        cleanPayload.fileContent = null;
-      } else if (attachmentFile) {
-        // New file selected — convert to Base64
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload  = () => resolve((reader.result as string).split(",")[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(attachmentFile);
-        });
-        cleanPayload.fileName    = attachmentFile.name;
-        cleanPayload.fileType    = attachmentFile.type;
-        cleanPayload.fileContent = base64;
-      }
-      // else: no change to attachment — backend keeps existing file
 
       const updated = await dispatch(editFineChemicals(cleanPayload)).unwrap();
       // Use the response directly — avoids a second round-trip and any race condition
@@ -930,12 +942,36 @@ const FineChemicalsDetails = () => {
                         <span className="pd-value" style={{ textTransform: "capitalize" }}>{product.orderType}</span>
                       </div>
                     )}
-                    {product.barcodeInfo && (
-                      <div className="pd-field">
-                        <span className="pd-label">Barcode Info</span>
-                        <span className="pd-value">{product.barcodeInfo}</span>
-                      </div>
-                    )}
+                    {product.barcodeInfo && (() => {
+                      const barcodes = splitBarcodes(product.barcodeInfo);
+                      return (
+                        <div className="pd-field" style={{ alignItems: "flex-start" }}>
+                          <span className="pd-label">Barcodes</span>
+                          <div className="pd-value" style={{ width: "100%" }}>
+                            <div style={{ fontSize: "0.8rem", color: "#6e7680", marginBottom: "6px" }}>
+                              {barcodes.length} barcode{barcodes.length === 1 ? "" : "s"}
+                            </div>
+                            {barcodes.map((bc: string, index: number) => (
+                              <div
+                                key={index}
+                                style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0" }}
+                              >
+                                {isLabManager && (
+                                  <button
+                                    className="btn btn-sm btn-outline-danger"
+                                    title="Delete this barcode (archives the unit)"
+                                    onClick={() => handleDeleteBarcode(bc)}
+                                  >
+                                    <i className="fa fa-trash" />
+                                  </button>
+                                )}
+                                <span>{bc}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -947,12 +983,27 @@ const FineChemicalsDetails = () => {
                   <span>Attachment</span>
                 </div>
                 <div className="pd-attachment">
-                  <AttachmentList
+                  {/* Multi-attachment manager: Lab Management can add/remove files
+                      directly here (no need to use the Update form). */}
+                  <AttachmentManager
                     module="finechemical"
                     id={product.productId || product.productid || id}
-                    legacyFileName={product.filename || product.fileName}
-                    onDownloadLegacy={handleDownloadAttachment}
+                    canEdit={isLabManager}
+                    maxFiles={5}
                   />
+                  {/* Legacy single-file attachment (older records stored one file
+                      inline). Show a download link for it when present. */}
+                  {(product.filename || product.fileName) && (
+                    <div style={{ marginTop: 10 }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={handleDownloadAttachment}
+                      >
+                        <i className="fa fa-download me-1" /> Download older attachment
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 

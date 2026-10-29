@@ -192,7 +192,14 @@ const Budget = () => {
       formData.budgetname = `${formData.groupName}-${formData.budgetno}` || "";
       formData.name = formData.groupName || "";
       formData.moneyleft = Number(formData.moneyleft);
-      formData.moneyalloted = Number(formData.moneyalloted);
+      formData.moneyallocated = Number(formData.moneyallocated);
+
+      // Allotted must be at least the remaining amount — remaining can never
+      // exceed what was allotted.
+      if (formData.moneyleft > formData.moneyallocated) {
+        alert("Remaining amount cannot be greater than the allotted amount.");
+        return;
+      }
 
       const budgetObj: any = {
         budget: formData,

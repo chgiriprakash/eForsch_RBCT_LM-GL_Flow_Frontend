@@ -105,10 +105,14 @@ const createThunk = <T, R>(
 // 🟢 Fetch Orders
 export const fetchOrders = createThunk(
   "dashboard/getOrdersList",
-  (_user: { email: string; name: string; role: string; groupName: string }) =>
-    axiosClient
-      .get(`api/orders/getOrdersList?page=1&size=10000&id=10`)
-      .then((res) => res.data)
+  (arg?: { fromDate?: string; toDate?: string }) => {
+    const params = new URLSearchParams({ page: "1", size: "10000", id: "10" });
+    if (arg?.fromDate) params.set("fromDate", arg.fromDate);
+    if (arg?.toDate) params.set("toDate", arg.toDate);
+    return axiosClient
+      .get(`api/orders/getOrdersList?${params.toString()}`)
+      .then((res) => res.data);
+  }
 );
 
 // 🟢 Approve/Reject Admin Calls
@@ -224,9 +228,16 @@ export const deleteFineChemicalOrder = createThunk("dashboard/deleteOrder", (id:
 // 🟢 Download All Orders (Handles actual file download)
 export const downloadAllOrders = createAsyncThunk(
   "dashboard/downloadAllOrders",
-  async (groupName: string, { rejectWithValue }) => {
+  async (
+    arg: { groupName?: string; fromDate?: string; toDate?: string } = {},
+    { rejectWithValue }
+  ) => {
     try {
-      const response = await axiosClient.get(`api/orders/downloadOrders?groupName=${groupName}`, {
+      const params = new URLSearchParams();
+      if (arg.groupName) params.set("groupName", arg.groupName);
+      if (arg.fromDate) params.set("fromDate", arg.fromDate);
+      if (arg.toDate) params.set("toDate", arg.toDate);
+      const response = await axiosClient.get(`api/orders/downloadOrders?${params.toString()}`, {
         responseType: "blob", // <--- CRITICAL: Tells Axios to expect a file, not JSON
       });
       
@@ -305,6 +316,16 @@ export const deleteProduct = createThunk("dashboard/deleteProduct", (id: number)
 // 🟢 Get Product by ID
 export const getFineChemicalById = createThunk("dashboard/finechemical/getFineChemicalById", (id: number) =>
   axiosClient.get(`api/finechemical/getFineChemicalById/${id}`).then((res) => res.data)
+);
+
+// Delete one barcode (one unit) from a fine chemical item; archives that unit
+// and reduces the quantity by one on the backend.
+export const deleteFineChemicalBarcode = createThunk(
+  "dashboard/finechemical/deleteBarcode",
+  ({ productId, barcode }: { productId: number; barcode: string }) =>
+    axiosClient
+      .delete(`api/finechemical/${productId}/barcode`, { params: { barcode } })
+      .then((res) => res.data)
 );
 
 // 🟢 CRUD operations for Fine Chemicals

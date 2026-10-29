@@ -454,20 +454,18 @@ const handleShareSubmit = async (
       formData.role = userRole.role;
 
       const rawAttachment = formData.attachment;
-      const fileObj: File | null = Array.isArray(rawAttachment) && rawAttachment.length > 0
-        ? rawAttachment[0]
-        : rawAttachment instanceof File ? rawAttachment : null;
+      const filesArray: File[] = Array.isArray(rawAttachment)
+        ? rawAttachment.filter((f: any) => f instanceof File)
+        : rawAttachment instanceof File ? [rawAttachment] : [];
       delete formData.attachment;
 
       const orderData = mapProductToOrder(formData, userRole);
-      console.log("📦 orderData:", JSON.stringify(orderData));
-      console.log("📎 fileObj:", fileObj);
 
       const payload = new FormData();
       payload.append("order", JSON.stringify(orderData));
-      if (fileObj) {
-        payload.append("files", fileObj, fileObj.name);
-      }
+      filesArray.forEach((file) => {
+        payload.append("files", file, file.name); // backend @RequestPart("files")
+      });
 
       await dispatch(addOrder(payload)).unwrap();
       alert("Order placed successfully!");
