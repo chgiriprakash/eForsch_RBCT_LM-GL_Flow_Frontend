@@ -72,6 +72,7 @@ interface Order {
   orderdate?: string; // Added property to fix error
   concentration?: string; // Added property to fix error
   expiryDate?: string; // Added property to fix error
+  pdMessage?: string;
 }
 
 // Define interface for pagination
@@ -223,15 +224,16 @@ const Orders = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [deliveryModal, setDeliveryModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
  // const [deliveryForm, setDeliveryForm] = useState({ storageLocation: "", orderType: "bulk", barcodeInfo: "" });
- const [deliveryForm, setDeliveryForm] = useState<{ storageLocation: string; orderType: string; barcodes: string[] }>({ storageLocation: "", orderType: "bulk", barcodes: [] });
+ const [deliveryForm, setDeliveryForm] = useState<{ storageLocation: string; expiryDate: string; orderType: string; barcodes: string[] }>({ storageLocation: "",expiryDate: "", orderType: "bulk", barcodes: [] });
  const [generalDeliveryModal, setGeneralDeliveryModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
   const [generalDeliveryTextField, setGeneralDeliveryTextField] = useState("");
+  const [generalDeliveryExpiryDate, setGeneralDeliveryExpiryDate] = useState("");
   const [, setGeneralDeliveryBarcodes] = useState<string[]>([]);
 const [orderedModal, setOrderedModal] = useState<{ open: boolean; order: Order | null }>({ open: false, order: null });
   const [sapOrderNumber, setSapOrderNumber] = useState("");
 
   const [viewOrderModal, setViewOrderModal] = useState<{ open: boolean; order: any | null }>({ open: false, order: null });
-  
+const [pdEditForm, setPdEditForm] = useState({ sapmaterialno: "", pdMessage: "" });
   
   console.log("groupOptions:", groupOptions);
   
@@ -355,7 +357,7 @@ const fetchPodeptData = async () => {
       const result = await dispatch(getCompanies()).unwrap();
       setCompanies(result);
       setCompanyOptions(
-        result.map((c: any) => ({ label: c.companyName, key: c.companyName }))
+        result.map((c: any) => ({ label: c.companyName, key: c.companyNo}))
       );
     } catch (error) {
       console.error("Failed to fetch companies:", error);
@@ -505,7 +507,7 @@ const enhanceColumns = (columns: OrderColumn[], userRole: any) => {
     onClick:
       column.key === "attachment"
         ? (row: Order) => addAttachment(row)
-        : column.key === "productName" && role !== "podept"
+        : column.key === "productName"
         ? (row: Order) => openOrderDetails(row)
         : column.onClick,
   }));
@@ -598,6 +600,7 @@ const enhanceList = (list: Order[], userRole: any) => {
                     setDeliveryModal({ open: true, order: item }); 
                     setDeliveryForm({ 
                     storageLocation: item.storageLocation || "", 
+                    expiryDate: item.expiryDate || "",
                     orderType: "bulk", 
                    barcodes: Array(qty).fill("") // Initialize array based on quantity
                                      }); 
@@ -612,6 +615,7 @@ const enhanceList = (list: Order[], userRole: any) => {
                 onClick={() => { 
                   setGeneralDeliveryModal({ open: true, order: item }); 
                   setGeneralDeliveryTextField("");
+                  setGeneralDeliveryExpiryDate("");
                 }}
               >
                 Delivered
@@ -778,6 +782,12 @@ const enhanceList = (list: Order[], userRole: any) => {
       _inventoryTypeRaw: row._inventoryTypeRaw || rawRow.inventoryType || "",
     };
     setViewOrderModal({ open: true, order: mergedRow });
+    if (role === "podept" || role === "purchase department") {
+      setPdEditForm({
+        sapmaterialno: mergedRow.sapmaterialno || mergedRow.sapMaterialNo || "",
+        pdMessage: mergedRow.pdMessage || ""
+      });
+    }
   } else {
     // Editable form modal BEFORE Approval or Rejection
     const existingFile =
@@ -786,9 +796,6 @@ const enhanceList = (list: Order[], userRole: any) => {
       (typeof rawRow.fileName === "string" && rawRow.fileName) ? rawRow.fileName :
       null;
 
-    // Seed the edit form from the RAW order data (rawRow), not the display-enhanced
-    // row. The enhanced row reformats some fields (e.g. orderdate -> DD-MM-YYYY),
-    // which then fail to populate the form inputs.
     setSelectedOrder(mapFormDataToOrder(rawRow, userRole));
     setExistingAttachmentName(existingFile);
     setIsOrderLocked(false); // Enables editable form controls
@@ -832,7 +839,7 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
 
 
    // 🟢 Ordered/Delivered Status Order
-  const handleOrder = async (order: Order, status: string, extra?: { storageLocation?: string; orderType?: string; barcodeInfo?: string; sapOrderNumber?: string }) => {
+  const handleOrder = async (order: Order, status: string, extra?: { storageLocation?: string; orderType?: string; barcodeInfo?: string; sapOrderNumber?: string; expiryDate?: string}) => {
     try {
       const user = { email: userRole.email, name: userRole.name, role: userRole.role, groupName: userRole.groupName };
       const apiName = (status === "Ordered") ? orderedPOD : deliveredPOD;
@@ -841,8 +848,9 @@ const handleApproval = async (order: Order, isApproved: boolean) => {
         : { id: order.orderId, user,
            ...(extra?.orderType && { orderType: extra?.orderType }),
            ...(extra?.barcodeInfo && { barcodeInfo: extra?.barcodeInfo }),
-           ...(extra?.storageLocation && { storageLocation: extra?.storageLocation })
-         };
+           ...(extra?.storageLocation && { storageLocation: extra?.storageLocation }),
+          ...(extra?.expiryDate && { expiryDate: extra?.expiryDate })
+          };
       await dispatch(apiName(payload)).unwrap();
       alert(`Order ${status} successfully!`);
       
@@ -970,6 +978,7 @@ if (value === true || value === "true" || value === 1) return true;
     adminName: normalizeString(formData.adminName),
     userName: userRole?.name || "",
     status: normalizeString(formData.status || "Pending"),
+    pdMessage: normalizeString(formData.pdMessage),
     attachment: null,
     fileContent: [],
     createdAt: formatToISOWithOffset(formData.createdAt),
@@ -1041,6 +1050,33 @@ if (value === true || value === "true" || value === 1) return true;
     } catch (error) {
       console.error("Error updating order:", error);
       alert("Failed to update order. Please try again.");
+    }
+  };
+
+const handlePdSave = async () => {
+    if (!viewOrderModal.order) return;
+    try {
+      const updatedOrderRaw = {
+        ...viewOrderModal.order,
+        sapmaterialno: pdEditForm.sapmaterialno,
+        sapMaterialNo: pdEditForm.sapmaterialno, 
+        pdMessage: pdEditForm.pdMessage
+      };
+
+      const mappedFormData = mapFormDataToOrder(updatedOrderRaw, userRole);
+
+      if (mappedFormData.inventoryType === "fineChemicalInventory") {
+        await dispatch(editFineChemicalOrder(mappedFormData as Order)).unwrap();
+      } else {
+        await dispatch(editOrder(mappedFormData as Order)).unwrap();
+      }
+
+      alert("Purchase Department details updated successfully!");
+      setViewOrderModal({ open: false, order: null });
+      fetchPodeptData();
+    } catch (error) {
+      console.error("Error updating PD details:", error);
+      alert("Failed to update details. Please try again.");
     }
   };
 
@@ -1260,7 +1296,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
         {/* Attachments — list/add/remove for existing orders.
             Editable for scientist / lab management / group leader before LM approval;
             download-only once approved (isOrderLocked) or for purchase department. */}
-        {selectedOrder?.orderId ? (
+       {/* {selectedOrder?.orderId ? (
           <div style={{ marginTop: 16, borderTop: "1px solid #eee", paddingTop: 12 }}>
             <label className="col-form-label label" style={{ fontWeight: 600 }}>
               <i className="fa fa-paperclip me-2" />Attachments
@@ -1277,7 +1313,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
               maxFiles={5}
             />
           </div>
-        ) : null}
+        ) : null}*/}
       </Modal>
 
 
@@ -1303,15 +1339,16 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
       {deliveryModal.open && (
         <div className="reject-modal-overlay">
           <div className="reject-modal">
-            <h5 className="reject-modal-title">
+            <h5 className="reject-modal-title mb-4">
               <i className="fa fa-truck me-2 text-success" />
               Mark as Delivered
             </h5>
-
-            <div className="reject-modal-field">
-              <label className="reject-modal-label">Storage Location <span className="text-danger">*</span></label>
+              <div className="rf-form row gy-3 align-items-start">
+              
+              <div className="col-12">
+              <label className="col-form-label label">Storage Location <span className="text-danger">*</span></label>
               <select
-                className="input"
+                className="form-control"
                 value={deliveryForm.storageLocation}
                 onChange={(e) => setDeliveryForm({ ...deliveryForm, storageLocation: e.target.value })}
                 style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e0e6ef", fontSize: "14px" }}
@@ -1322,9 +1359,17 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                 ))}
               </select>
             </div>
-
-            <div className="reject-modal-field">
-              <label className="reject-modal-label">Order Type <span className="text-danger">*</span></label>
+            <div className="col-12">
+                <label className="col-form-label label">Expiry Date <span className="text-danger">*</span></label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={deliveryForm.expiryDate}
+                  onChange={(e) => setDeliveryForm({ ...deliveryForm, expiryDate: e.target.value })}
+                />
+              </div>
+            <div className="col-12">
+              <label className="col-form-label label">Order Type <span className="text-danger">*</span></label>
               <div style={{ display: "flex", gap: 24, marginTop: 6 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                   <input
@@ -1355,13 +1400,14 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
             </div>
 
             {deliveryForm.orderType === "nonbulk" && (
-              <div className="reject-modal-field">
-                <label className="reject-modal-label">Barcode Information <span className="text-danger">*</span></label>
+              <div className="col-12">
+                <label className="col-form-label label">Barcode Information <span className="text-danger">*</span></label>
+                <div style={{ maxHeight: "200px", overflowY: "auto", paddingRight: "8px" }}>
                 {deliveryForm.barcodes.map((barcode, index) => (
                   <input
                     key={index}
                     type="text"
-                    className="input"
+                    className="form-control mb-2"
                     placeholder={`Enter barcode for item ${index + 1}...`}
                     value={barcode}
                     style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e0e6ef", fontSize: "14px", marginBottom: "8px" }}
@@ -1373,22 +1419,23 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                   />
                 ))}
               </div>
+              </div>
             )}
 
-            <div className="reject-modal-actions">
-              <button className="btn btn-secondary" onClick={() => setDeliveryModal({ open: false, order: null })}>
-                Cancel
-              </button>
+            <div className="col-12 rf-btn-area mt-3">
+              
               <button
-                className="btn btn-success"
+                className="rf-btn-submit"
                 disabled={
                   deliveryForm.orderType === "nonbulk" && 
-                  deliveryForm.barcodes.some((b) => !b.trim()) // Disable if any barcode is empty
+                  deliveryForm.barcodes.some((b) => !b.trim()) ||
+                    !deliveryForm.expiryDate // Disable if any barcode is empty
                 }
                 onClick={async () => {
                   if (deliveryModal.order) {
                     await handleOrder(deliveryModal.order, "Delivered", {
                       storageLocation: deliveryForm.storageLocation,
+                      expiryDate: deliveryForm.expiryDate,
                       orderType: deliveryForm.orderType,
                       // Assuming the backend expects a comma-separated string. 
                       // If it expects an array, just pass: barcodeInfo: deliveryForm.barcodes
@@ -1398,10 +1445,18 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                   }
                 }}
               >
-                Submit
+
+                <i className="fa fa-check me-2" />Submit
               </button>
+              <button 
+                  className="rf-btn-reset" 
+                  onClick={() => setDeliveryModal({ open: false, order: null })}
+                >
+                  <i className="fa fa-times me-2" />Cancel
+                </button>
             </div>
           </div>
+        </div>
         </div>
       )}
 
@@ -1457,7 +1512,14 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                 <div className="pd-fields">
                   {[
                     { label: "Company Internal No", value: viewOrderModal.order.companyinternalno || viewOrderModal.order.companyInternalNo },
-                    { label: "SAP Material No",     value: viewOrderModal.order.sapmaterialno || viewOrderModal.order.sapMaterialNo },
+                    { label: "SAP Material No",     value: (userRole?.role?.toLowerCase() === "podept" || userRole?.role?.toLowerCase() === "purchase department") ? (
+                        <input 
+                          type="text" 
+                          className="form-control form-control-sm" 
+                          value={pdEditForm.sapmaterialno} 
+                          onChange={(e) => setPdEditForm({...pdEditForm, sapmaterialno: e.target.value})} 
+                        />
+                      ) : (viewOrderModal.order.sapmaterialno || viewOrderModal.order.sapMaterialNo) },
                     { label: "SAP Order No",        value: viewOrderModal.order.sapOrderNumber },
                     { label: "Expiry Date",         value: formatToDDMMYY(viewOrderModal.order.expiryDate) },
                     { label: "Order Date",          value: formatToDDMMYY(viewOrderModal.order.orderdate) },
@@ -1552,10 +1614,50 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                   />
                 </div>
               </div>
+              {/* Purchase Department Notes */}
+              <div className="pd-card" style={{ gridColumn: "1 / 4" }}>
+                <div className="pd-card-header">
+                  <i className="fa fa-comment pd-card-icon" />
+                  <span>Purchase Department Notes</span>
+                </div>
+                
+                {/* Replaced .pd-fields with a simple padded container for a full-width layout */}
+                <div style={{ padding: "16px" }}>
+                  {(userRole?.role?.toLowerCase() === "podept" || userRole?.role?.toLowerCase() === "purchase department") ? (
+                    <textarea 
+                      className="form-control" 
+                      rows={2}
+                      placeholder="Add notes here (e.g., material unavailable, alternative vendor, price changes)..."
+                      value={pdEditForm.pdMessage}
+                      onChange={(e) => setPdEditForm({...pdEditForm, pdMessage: e.target.value})}
+                      style={{ 
+                        width: "100%", 
+                        resize: "vertical",
+                        borderRadius: "6px"
+                      }}
+                    />
+                  ) : (
+                    
+                    <div style={{ 
+                      padding: "12px 16px", 
+                      backgroundColor: "#f8f9fa", 
+                      border: "1px solid #e9ecef", 
+                      borderRadius: "6px",
+                      color: viewOrderModal.order.pdMessage ? "#212529" : "#6c757d",
+                      minHeight: "48px"
+                    }}>
+                      {viewOrderModal.order.pdMessage || <em>No notes provided.</em>}
+                    </div>
+                  )}
+                </div>
+              </div>
 
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 , gap: "12px"}}>
+              {(userRole?.role?.toLowerCase() === "podept" || userRole?.role?.toLowerCase() === "purchase department") && (
+                <button className="btn btn-primary" onClick={handlePdSave}>Save Changes</button>
+              )}
               <button className="btn btn-secondary" onClick={() => setViewOrderModal({ open: false, order: null })}>Close</button>
             </div>
           </div>
@@ -1628,12 +1730,25 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                 style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e0e6ef", fontSize: "14px" }}
               />
             </div>
+            {/* NEW Expiry Date Field */}
+            <div className="reject-modal-field">
+              <label className="reject-modal-label">Expiry Date <span className="text-danger">*</span></label>
+              <input
+                type="date"
+                className="form-control"
+                value={generalDeliveryExpiryDate}
+                onChange={(e) => setGeneralDeliveryExpiryDate(e.target.value)}
+                style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e0e6ef", fontSize: "14px" }}
+              />
+            </div>
+
             <div className="reject-modal-actions">
               <button
                 className="btn btn-secondary"
                 onClick={() => {
                   setGeneralDeliveryModal({ open: false, order: null });
                   setGeneralDeliveryTextField("");
+                  setGeneralDeliveryExpiryDate("");
                   setGeneralDeliveryBarcodes([]);
                 }}
               >
@@ -1645,23 +1760,20 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                 onClick={async () => {
                   if (generalDeliveryModal.order) {
                     await handleOrder(generalDeliveryModal.order, "Delivered", {
-                      storageLocation: generalDeliveryTextField, // Passing original text field here
+                      storageLocation: generalDeliveryTextField, 
+                    expiryDate: generalDeliveryExpiryDate,
                     });
                     setGeneralDeliveryModal({ open: false, order: null });
                     setGeneralDeliveryTextField("");
+                    setGeneralDeliveryExpiryDate("");
                     
                   }
                 }}
               >
                 Confirm Delivery
-              </button>
-              <button
-                className="btn-color upload-wrapper btn btn-primary"
-                onClick={() => window.print()}
-                type="button"
+              </button
               >
-                <i className="fa fa-print me-1" /> Print
-              </button>
+              
             </div>
           </div>
         </div>

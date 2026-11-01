@@ -39,7 +39,7 @@ const addFineChemicalsFormConfig = (
     id: "expiryDate",
     label: "Expiry Date",
     type: "date",
-    validation: { required: true },
+    //validation: { required: true },
   },
   {
     id: "companyInternalNo",
@@ -51,7 +51,7 @@ const addFineChemicalsFormConfig = (
     id: "sapMaterialNo",
     label: "SAP Material No",
     type: "text", // changed to text to accept alphanumeric
-    validation: { required: true },
+    //validation: { required: true },
   },
   {
     id: "wvsubqty",

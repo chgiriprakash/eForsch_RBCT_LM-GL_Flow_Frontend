@@ -47,12 +47,12 @@ const addOrderFineChemicalFormConfig = (
         type: "text",
         validation: { required: false },
     },
-    {
-        id: "sapMaterialNo",
-        label: "SAP Material No",
-        type: "text", // changed to text to accept alphanumeric
-        validation: { required: false },
-    },
+    //{
+     //   id: "sapMaterialNo",
+      //  label: "SAP Material No",
+       // type: "text", // changed to text to accept alphanumeric
+       // validation: { required: false },
+    //},
     {
         id: "weightvolsubqty",
         label: "Weight / Vol / Sub QTY",

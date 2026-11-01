@@ -189,6 +189,7 @@ const FineChemicals = () => {
         { key: "price",        label: "Price",               sortable: true,  hidden: false },
         { key: "budgetno",     label: "Budget Number",       sortable: true,  hidden: false },
         { key: "orderedby",    label: "Ordered By",          sortable: false, hidden: false },
+        { key: "storagelocation", label: "Storage Location",    sortable: false, hidden: false },
       ];
       if (isLabMgmt) {
         updatedColumns.push({ key: "action", label: "Action", sortable: false, hidden: false });

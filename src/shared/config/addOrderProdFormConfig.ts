@@ -36,9 +36,9 @@ const addOrderProdFormConfig = (
   },
   {
     id: "expirydate",
-    label: "Expiry Date (Mandatory)",
+    label: "Expiry Date",
     type: "date",
-    validation: { required: true },
+    //validation: { required: true },
   },
   {
     id: "companyinternalno",
@@ -50,7 +50,7 @@ const addOrderProdFormConfig = (
     id: "sapmaterialno",
     label: "SAP Material No",
     type: "text",
-    validation: { required: true },
+   // validation: { required: true },
   },
   {
     id: "weightvolsubqty",

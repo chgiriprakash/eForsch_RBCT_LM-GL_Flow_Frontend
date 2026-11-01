@@ -65,6 +65,7 @@ const RegisterForm: React.FC<{ formConfig: any[] }> = ({ formConfig }) => {
         key: r.key,
         label: r.label,
       }));
+      
 
       const updatedConfig = formConfig.map((f) =>
         f.id === "role" ? { ...f, options: roleNames } : f

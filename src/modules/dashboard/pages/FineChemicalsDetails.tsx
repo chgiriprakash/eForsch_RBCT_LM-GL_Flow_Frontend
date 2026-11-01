@@ -774,7 +774,7 @@ const FineChemicalsDetails = () => {
                     <span className="pd-value">{formatDate(product.orderdate, "DD-MM-YYYY")}</span>
                   </div>
                   <div className="pd-field">
-                    <span className="pd-label">Expiry Date</span>
+                    <span className="pd-label">Upload Excel</span>
                     <span className="pd-value pd-expiry">{formatDate(product.expiryDate, "DD-MM-YYYY")}</span>
                   </div>
                   <div className="pd-field">
