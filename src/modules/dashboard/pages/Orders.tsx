@@ -981,6 +981,14 @@ if (value === true || value === "true" || value === 1) return true;
     substitutionCheck: normalizeString(formData.substitutionCheck),
     substitutionOption: normalizeString(formData.substitutionOption),
     storageLocation: normalizeString(formData.storageLocation),
+    // Chemical Risk Assessment (fine chemical) — carry through edits so they are
+    // shown in the Update form and not wiped when the order is modified.
+    applicationOfHazardousSubstance: normalizeString(formData.applicationOfHazardousSubstance),
+    concentrationWorkingVolume: normalizeString(formData.concentrationWorkingVolume),
+    labNoWorkingWithChemical: normalizeString(formData.labNoWorkingWithChemical),
+    numberOfEmployees: normalizeString(formData.numberOfEmployees),
+    handlingDurationGreater15Min: normalizeString(formData.handlingDurationGreater15Min),
+    hazardousDueToSkinContact: normalizeString(formData.hazardousDueToSkinContact),
     adminApproved: normalizeApproveBool(formData.adminApproved, "adminApproved"),
     labApproved: normalizeApproveBool(formData.labApproved, "labApproved"),
     adminApprovalStatusDate: formatToISOWithOffset(formData.adminApprovalStatusDate),

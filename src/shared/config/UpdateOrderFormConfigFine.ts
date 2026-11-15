@@ -193,6 +193,46 @@ const UpdateOrderFormConfigFine = (
     type: "text",
     validation: { required: false },
   },
+  // Chemical Risk Assessment
+  {
+    id: "applicationOfHazardousSubstance",
+    label: "Application of the Hazardous Substance",
+    type: "textarea",
+    colSize: "col-12",
+    validation: { required: false },
+  },
+  {
+    id: "concentrationWorkingVolume",
+    label: "Concentration / Working Volume",
+    type: "text",
+    validation: { required: false },
+  },
+  {
+    id: "labNoWorkingWithChemical",
+    label: "Lab No. Working with this Chemical",
+    type: "text",
+    validation: { required: false },
+  },
+  {
+    id: "numberOfEmployees",
+    label: "Number of Employees Working with this Chemical",
+    type: "text",
+    validation: { required: false },
+  },
+  {
+    id: "handlingDurationGreater15Min",
+    label: "Is Handling Duration Greater than 15min/day?",
+    type: "select",
+    options: ["Yes", "No"],
+    validation: { required: false },
+  },
+  {
+    id: "hazardousDueToSkinContact",
+    label: "Hazardous Due to Skin Contact?",
+    type: "select",
+    options: ["Yes", "No"],
+    validation: { required: false },
+  },
   // {
   //   id: "inventoryType",
   //   label: "Inventory Type",
