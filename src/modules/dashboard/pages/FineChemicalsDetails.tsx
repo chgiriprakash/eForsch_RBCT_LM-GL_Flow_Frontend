@@ -83,7 +83,8 @@ const FineChemicalsDetails = () => {
       sapmaterialno: "sapMaterialNo",
       saporderno: "sapOrderNo",
       sapordernumber: "sapOrderNo",
-      weightvolsubqty: "wvsubqty",
+      weightvolsubqty: "weightvolsubqty",
+      wvsubqty: "weightvolsubqty",
       budgetno: "budgetno",
       orderdate: "orderdate",
       orderedby: "orderedby",
@@ -144,15 +145,19 @@ const FineChemicalsDetails = () => {
     productId: product.productid || "",
     productname: product.productname || "",
     catalogue: product.catalogue || "",
-    companyname: product.companyname || "",
+    companyName: product.companyName || product.companyname || "",
+    companyname: product.companyName || product.companyname || "",
     quantity: product.quantity || "",
     expiryDate: product.expiryDate || "",
     companyInternalNo: product.companyInternalNo || "",
     sapMaterialNo: product.sapMaterialNo || "",
     sapOrderNo: product.sapOrderNo || product.saporderno || "",
-    weightvolsubqty: product.wvsubqty || "",
+    wvsubqty: product.wvsubqty || product.weightvolsubqty || "",
+    //weightvolsubqty: product.wvsubqty || product.weightvolsubqty || "",
+    weightvolsubqty: product.weightvolsubqty || "",
     budgetno: product.budgetno || "",
-    orderdate: product.orderdate || "",
+    orderdate: product.orderDate || product.orderdate || formatDate(new Date().toISOString(), "MM-DD-YYYY"),
+orderDate: product.orderDate || product.orderdate || formatDate(new Date().toISOString(), "MM-DD-YYYY"),
     concentration: product.concentration || "",
     price: Number(product.price) || 0,
     remarks: product.remarks || "",
@@ -185,13 +190,14 @@ const FineChemicalsDetails = () => {
     return {
       productId: product.productId || product.productid || 0,
       productname: product.productname || "",
-      companyname: product.companyname || "",
+      companyName: product.companyName || product.companyname || "",
+    companyname: product.companyName || product.companyname || "",
       quantity: product.quantity || "",
       expiryDate: product.expiryDate,
       companyInternalNo: product.companyInternalNo || product.companyinternalno || "",
       sapMaterialNo: product.sapMaterialNo || product.sapmaterialno || "",
       sapOrderNo: product.sapOrderNo || product.saporderno || "",
-      wvsubqty: product.wvsubqty || product.weightvolsubqty || "",
+      wvsubqty: product.weightvolsubqty || product.wvsubqty || "",
       budgetno: product.budgetno || "",
       orderdate: product.orderdate,
       orderedby: userRole?.name || "",
@@ -384,7 +390,14 @@ const FineChemicalsDetails = () => {
     fetchPPhrases();
   }, [dispatch, id]);
 
-  const handleOrder = () => setIsModalOpen(true);
+  const handleOrder = () => {
+  const today = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD" required by <input type="date">
+  setOrder((prev: any) => ({
+    ...(prev || mapFineProductToOrder(product || {}, userRole)),
+    orderdate: today,
+  }));
+  setIsModalOpen(true);
+};
   const handleUpdate = () => setIsProductModalOpen(true);
 
   const handleShare = async () => {
@@ -735,7 +748,7 @@ const FineChemicalsDetails = () => {
                   </div>
                   <div className="pd-field">
                     <span className="pd-label">Weight / Vol / Sub QTY</span>
-                    <span className="pd-value">{getValue(product.wvsubqty)}</span>
+                    <span className="pd-value">{getValue(product.weightvolsubqty)}</span>
                   </div>
                   <div className="pd-field">
                     <span className="pd-label">Company Internal No</span>

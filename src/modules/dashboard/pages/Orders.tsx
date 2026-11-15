@@ -1187,7 +1187,7 @@ const handleAddFinechemicalt = async (formData: Record<string, any>) => {
 // ✅ Auto-fill company internal number when company is selected
 const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string, any>> | void => {
   if (id === "companyname" || id === "companyName") {
-    const selected = companies.find((c) => c.companyName === value);
+    const selected = companies.find((c) => c.companyName === value || c.companyNo === value || String(c.id) === String(value));
     if (selected) {
       return {
         companyinternalno: selected.companyNo,

@@ -85,6 +85,8 @@ const Archieves = () => {
       "createdBy",
       "updatedBy",
       "expiryDate",
+      "labApproved",
+      "adminApproved",
     ]);
 
     const keyMapping: Record<string, string> = {};

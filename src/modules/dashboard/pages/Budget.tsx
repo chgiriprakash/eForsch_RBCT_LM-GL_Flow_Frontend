@@ -7,6 +7,8 @@ import {
   deleteBudget,
   editBudget,
   getGroupNames,
+  fetchOrders
+  
 } from "../dashboardSlice";
 import Modal from "../../../shared/components/Modal";
 import DynamicTable from "../../../shared/components/DynamicTable";
@@ -64,7 +66,7 @@ const Budget = () => {
   const userRole = JSON.parse(localStorage.getItem("user") || "{}");
   // const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { loading, error } = useAppSelector((state) => state.dashboard);
+  const { loading, error, orders } = useAppSelector((state) => state.dashboard);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [data, setData] = useState<any>();
@@ -78,6 +80,7 @@ const Budget = () => {
   useEffect(() => {
     fetchBudget();
     fetchGroupNames();
+    dispatch(fetchOrders());
   }, [dispatch]);
 
   const fetchBudget = async () => {
@@ -101,9 +104,35 @@ const Budget = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (item: BudgetRow) => {
-    const isConfirmed = window.confirm("Are you sure you want to delete this budget?");
-    if (!isConfirmed) return; 
+const handleDelete = async (item: BudgetRow) => {
+  try {
+    // 1. Fetch orders list
+    const ordersResult = await dispatch(fetchOrders()).unwrap();
+    const ordersArray = ordersResult?.data?.list || [];
+  
+    const hasOngoingOrders = ordersArray.some((order: any) => {
+      const matchesBudget =
+        order.budgetId === item.budgetId ||
+        order.budgetName === item.budgetname ||
+        order.budgetno === item.budgetno;
+
+      const normalizedStatus = (order.status || "").toLowerCase().trim();
+      const isOngoing =
+        normalizedStatus !== "delivered" && normalizedStatus !== "rejected";
+
+      return matchesBudget && isOngoing;
+    });
+
+    if (hasOngoingOrders) {
+      alert("Cannot delete this budget because it has ongoing orders.");
+      return;
+    }
+
+    // 3. Confirm and delete if no ongoing orders exist
+    const isConfirmed = window.confirm(
+      "Are you sure you want to delete this budget?"
+    );
+    if (!isConfirmed) return;
 
     const budgetObj = {
       budgetId: item.budgetId,
@@ -112,8 +141,11 @@ const Budget = () => {
 
     await dispatch(deleteBudget(budgetObj)).unwrap();
     fetchBudget();
-  };
-
+  } catch (error: any) {
+    console.error("Failed to delete budget:", error);
+    alert(error?.message || "An error occurred while deleting the budget.");
+  }
+};
   const enhanceTableConfig = (
     config: TableObject,
     userRole: { role?: string }
