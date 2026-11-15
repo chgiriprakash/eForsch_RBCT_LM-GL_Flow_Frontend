@@ -136,6 +136,7 @@ const GeneralInventory = () => {
         { key: "price",            label: "Price",                     sortable: true,  hidden: false },
         { key: "budgetno",         label: "Budget Number",             sortable: true,  hidden: false },
         { key: "addedby",          label: "Ordered By",                sortable: false, hidden: false },
+        { key: "storageLocation",  label: "Storage Location",          sortable: false, hidden: false },
         { key: "action",           label: "Action",                    sortable: false, hidden: false },
       ];
 
@@ -161,6 +162,7 @@ const GeneralInventory = () => {
           { key: "price",           label: "Price",               sortable: true,  hidden: false },
           { key: "budgetno",        label: "Budget Number",       sortable: true,  hidden: false },
           { key: "addedby",         label: "Ordered By",          sortable: false, hidden: false },
+          { key: "storageLocation", label: "Storage Location",    sortable: false, hidden: false },
         ],
         pagination: defaultPagination,
       });

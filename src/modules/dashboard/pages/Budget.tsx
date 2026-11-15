@@ -66,7 +66,7 @@ const Budget = () => {
   const userRole = JSON.parse(localStorage.getItem("user") || "{}");
   // const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { loading, error, orders } = useAppSelector((state) => state.dashboard);
+  const { loading, error } = useAppSelector((state) => state.dashboard);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [data, setData] = useState<any>();

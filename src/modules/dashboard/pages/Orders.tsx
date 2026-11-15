@@ -1296,7 +1296,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
         {/* Attachments — list/add/remove for existing orders.
             Editable for scientist / lab management / group leader before LM approval;
             download-only once approved (isOrderLocked) or for purchase department. */}
-       {/* {selectedOrder?.orderId ? (
+       {selectedOrder?.orderId ? (
           <div style={{ marginTop: 16, borderTop: "1px solid #eee", paddingTop: 12 }}>
             <label className="col-form-label label" style={{ fontWeight: 600 }}>
               <i className="fa fa-paperclip me-2" />Attachments
@@ -1313,7 +1313,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
               maxFiles={5}
             />
           </div>
-        ) : null}*/}
+        ) : null}
       </Modal>
 
 

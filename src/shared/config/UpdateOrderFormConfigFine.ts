@@ -207,13 +207,10 @@ const UpdateOrderFormConfigFine = (
   //   options: ["Pending", "Approved", "Rejected"],
   //   validation: { required: false },
   // },
-  {
-    id: "attachment",
-    label: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year",
-    type: "file",
-    //helpText: "Please upload SDS in DE and/or EN here. Save the pdf with the name “CAS No_name_company_language_year”",
-    validation: { required: false },
-  },
+  // Attachments on an existing order are managed by the AttachmentManager
+  // component in the update modal (live list + multi add/remove), not by an
+  // in-form file field, so the single-file "attachment" field is intentionally
+  // not shown here.
   // {
   //   id: "safetydatasheet",
   //   label: "Safety Data Sheet (SDS)",
