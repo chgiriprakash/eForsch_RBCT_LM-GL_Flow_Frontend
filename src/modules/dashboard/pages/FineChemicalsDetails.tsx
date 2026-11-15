@@ -768,6 +768,12 @@ orderDate: product.orderDate || product.orderdate || formatDate(new Date().toISO
                       <span className="pd-value">{product.sourceOrderId}</span>
                     </div>
                   )}
+                  {product.pdMessage && (
+                    <div className="pd-field">
+                      <span className="pd-label">Message from PD</span>
+                      <span className="pd-value">{product.pdMessage}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

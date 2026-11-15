@@ -1613,6 +1613,28 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                 </div>
               )}
 
+              {/* Chemical Risk Assessment — fine chemical orders only */}
+              {isFineChemical(viewOrderModal.order) && (
+                <div className="pd-card" style={{ gridColumn: "1 / 4" }}>
+                  <div className="pd-card-header"><i className="fa fa-flask pd-card-icon" /><span>Chemical Risk Assessment</span></div>
+                  <div className="pd-fields">
+                    {[
+                      { label: "Application of Hazardous Substance",          value: viewOrderModal.order.applicationOfHazardousSubstance },
+                      { label: "Concentration / Working Volume",             value: viewOrderModal.order.concentrationWorkingVolume },
+                      { label: "Lab No. Working with this Chemical",         value: viewOrderModal.order.labNoWorkingWithChemical },
+                      { label: "No. of Employees Working with this Chemical", value: viewOrderModal.order.numberOfEmployees },
+                      { label: "Handling Duration > 15min/day?",             value: viewOrderModal.order.handlingDurationGreater15Min },
+                      { label: "Hazardous Due to Skin Contact?",             value: viewOrderModal.order.hazardousDueToSkinContact },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="pd-field">
+                        <span className="pd-label">{label}</span>
+                        <span className="pd-value">{value ?? <span style={{ color: "#aaa" }}>—</span>}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Attachments */}
               <div className="pd-card" style={{ gridColumn: "1 / 4" }}>
                 <div className="pd-card-header"><i className="fa fa-paperclip pd-card-icon" /><span>Attachments</span></div>
