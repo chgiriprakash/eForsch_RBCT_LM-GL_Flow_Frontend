@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "react-bootstrap";
 import DynamicTable from "../../../shared/components/DynamicTable";
 import Modal from "../../../shared/components/Modal";
@@ -207,6 +207,13 @@ const Orders = () => {
   const [isOrderLocked, setIsOrderLocked] = useState(false);
   const [data, setData] = useState<OrderData | null>(null);
   const [origalData, setOrigalData] = useState<OrderData | null>(null);
+  // Always-current mirror of origalData. The table's row click handlers are built
+  // inside fetchData/fetchPodeptData and close over the origalData value from that
+  // render; after a save + refetch they would otherwise read a STALE snapshot and
+  // show old field values (e.g. PD notes / SAP material no) in the order modal.
+  // Reading this ref in openOrderDetails guarantees the latest fetched data.
+  const origalDataRef = useRef<OrderData | null>(null);
+  useEffect(() => { origalDataRef.current = origalData; }, [origalData]);
   const [dateRange, setDateRange] = useState<DateRange>({ fromDate: "", toDate: "" });
   const [exporting, setExporting] = useState(false);
   console.log("Orders - origalData state:", origalData);
@@ -733,8 +740,11 @@ const enhanceList = (list: Order[], userRole: any) => {
  const openOrderDetails = (row: any) => {
   const role = userRole?.role?.toLowerCase();
 
-  // 1. Get raw unenhanced order data
-  const rawRow = origalData?.list?.find((o: any) => o.orderId === row.orderId) || row;
+  // 1. Get raw unenhanced order data.
+  // Read from the ref (not the closed-over origalData state) so a click after a
+  // save+refetch sees the LATEST fetched values, not the stale render snapshot.
+  const latestOrigalData = origalDataRef.current || origalData;
+  const rawRow = latestOrigalData?.list?.find((o: any) => o.orderId === row.orderId) || row;
   const statusLower = rawRow.status?.toLowerCase() || "";
 
   // 2. Explicitly check if the order has been REJECTED
