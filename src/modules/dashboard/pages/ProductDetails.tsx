@@ -716,7 +716,7 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
               </div>
 
               {/* Delivery Info — shown when populated from a delivered order */}
-              {(product.storageLocation || product.barcodeInfo) && (
+              {(product.storageLocation || product.barcodeInfo || product.pdMessage) && (
                 <div className="pd-card pd-card-full">
                   <div className="pd-card-header">
                     <i className="fa fa-truck pd-card-icon" />
@@ -733,6 +733,12 @@ const handleProductSubmit = async (formData: Record<string, any>) => {
                       <div className="pd-field">
                         <span className="pd-label">Barcode Info</span>
                         <span className="pd-value">{product.barcodeInfo}</span>
+                      </div>
+                    )}
+                    {product.pdMessage && (
+                      <div className="pd-field">
+                        <span className="pd-label">Message from PD</span>
+                        <span className="pd-value">{product.pdMessage}</span>
                       </div>
                     )}
                   </div>
