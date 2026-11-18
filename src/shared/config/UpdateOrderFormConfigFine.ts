@@ -30,24 +30,24 @@ const UpdateOrderFormConfigFine = (
     type: "number",
     validation: { required: true },
   },
-  {
-    id: "expiryDate",
-    label: "Expiry Date (Mandatory)",
-    type: "date",
-    validation: { required: true },
-  },
+  //{
+    //id: "expiryDate",
+    //label: "Expiry Date (Mandatory)",
+    //type: "date",
+    //validation: { required: true },
+  //},
   {
     id: "companyinternalno",
     label: "Company Internal No (auto-filled)",
     type: "text",
     validation: { required: false },
   },
-  {
-    id: "sapmaterialno",
-    label: "SAP Material No",
-    type: "text",
-    validation: { required: true },
-  },
+  //{
+    //id: "sapmaterialno",
+    //label: "SAP Material No",
+    //type: "text",
+    //validation: { required: true },
+  //},
   {
     id: "weightvolsubqty",
     label: "Weight / Vol / Sub QTY",
