@@ -1336,7 +1336,7 @@ select:focus {
 }
 
 /* ── Reject Confirmation Modal ──────────────────────────────── */
-.reject-modal-overlay {
+/*.reject-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
@@ -1353,6 +1353,93 @@ select:focus {
   width: 100%;
   max-width: 460px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}*/
+
+/* Pin the first child (title + close button header) while scrolling the form */
+.reject-modal > div:first-child,
+.reject-modal .modal-header {
+  position: sticky;
+  top: -24px; /* Matches the 24px top padding of .reject-modal so there is no gap */
+  background-color: #ffffff;
+  z-index: 10;
+  padding-top: 24px;
+  padding-bottom: 12px;
+  margin-top: -24px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e9ecef;
+}
+.reject-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 28px);
+  overflow-y: auto;
+  z-index: 1050;
+}
+
+/* Solid white surface + auto-adjusting viewport sizing */
+/* 1. Force a uniform width across Product Details, Update Fine Chemical, and Update General Inventory */
+.reject-modal {
+  background-color: #ffffff !important;
+  color: #212529;
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  width: 960px !important;          /* Exact same width for all forms */
+  max-width: 94vw !important;       /* Shrinks proportionally only if browser is narrower than 960px */
+  max-height: 88vh !important;      /* Consistent max height across all forms */
+  overflow-y: auto !important;
+  margin: auto;
+  box-sizing: border-box;
+}
+
+/* Make the View Order Details modal larger while still fitting the browser window */
+.reject-modal:has(.pd-grid) {
+  width: min(96vw, 1280px) !important;
+  max-width: 96vw !important;
+  min-height: 82vh !important;
+  max-height: 92vh !important;
+}
+
+/* 2. Keep small confirmation dialogs (Reject, Ordered, Delivered) compact */
+.reject-modal:not(:has(.pd-grid, .rf-form, form)) {
+  width: 480px !important;
+  max-width: 92vw !important;
+}
+
+/* Auto-adjust the 3-column card layout inside View Order Details */
+.reject-modal .pd-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+  gap: 16px;
+}
+
+/* Ensure full-width sections span cleanly across any column count */
+.reject-modal .pd-grid > .pd-card[style*="grid-column"] {
+  grid-column: 1 / -1 !important;
+}
+
+/* Make Apply, Clear, and Export to Excel share identical sizing and alignment */
+.title-header .btn-wrapper button {
+  height: 38px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+/* Match Apply (first button in DateRangeFilter) to .btn-color blue */
+.title-header .btn-wrapper button:first-of-type:not(.btn-color) {
+  background-color: var(--btn-bg, #0d6efd); /* Replace with your .btn-color hex if custom */
+  border-color: var(--btn-bg, #0d6efd);
+  color: #ffffff;
 }
 
 .reject-modal-title {

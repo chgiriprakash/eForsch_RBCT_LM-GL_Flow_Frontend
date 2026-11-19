@@ -1481,7 +1481,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
       {/* View Order Details Modal */}
       {viewOrderModal.open && viewOrderModal.order && (
         <div className="reject-modal-overlay">
-          <div className="reject-modal" style={{ maxWidth: 1050, width: "95%" }}>
+          <div className="reject-modal">
 
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>

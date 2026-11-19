@@ -125,10 +125,10 @@ const DateRangeFilter = ({ onApply, className }: Props) => {
         </>
       )}
 
-      <button type="button" className="btn btn-sm btn-primary" onClick={() => onApply(resolve())}>
+      <button type="button" className="btn-color" onClick={() => onApply(resolve())}>
         Apply
       </button>
-      <button type="button" className="btn btn-sm btn-outline-secondary" onClick={handleClear}>
+      <button type="button" className="btn-color" onClick={handleClear}>
         Clear
       </button>
     </div>
