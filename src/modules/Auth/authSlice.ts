@@ -108,10 +108,13 @@ export const loginUser = createAsyncThunk<AuthResponse, LoginCredentials>(
     try {
       const response = await axiosClient.post<AuthResponse>('auth/login', credentials);
 
-      // Check if response has expected structure
+      // Check if response has expected structure. When the backend rejects the
+      // login (e.g. bad credentials, or an account pending approval) it returns
+      // HTTP 200 with status:"error" and a message but no data.user — surface
+      // that message instead of a generic one so the user sees the real reason.
       if (!response.data?.data?.user) {
         console.error('Invalid login response structure:', response.data);
-        return rejectWithValue('Invalid username and password');
+        return rejectWithValue(response.data?.message || 'Invalid username and password');
       }
 
       const user = response.data.data.user;

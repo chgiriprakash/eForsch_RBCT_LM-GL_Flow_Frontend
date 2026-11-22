@@ -27,14 +27,14 @@ interface Props<T> {
 }
 
 const ghsImageMap: Record<string, string> = {
-  "Explosive": "/src/assets/ghs/ghs_001.jpg",
-  "Flammable": "/src/assets/ghs/ghs_002.jpg",
-  "Oxidizing": "/src/assets/ghs/ghs_003.jpg",
-  "Corrosive": "/src/assets/ghs/ghs_005.jpg",
-  "Toxic": "/src/assets/ghs/ghs_006.jpg",
-  "Harmful": "/src/assets/ghs/ghs_007.jpg",
-  "Gas under pressure": "/src/assets/ghs/ghs_008.jpg",
-  "Environmental hazard": "/src/assets/ghs/ghs_009.jpg",
+  "Explosive": "/ghs/ghs_001.jpg",
+  "Flammable": "/ghs/ghs_002.jpg",
+  "Oxidizing": "/ghs/ghs_003.jpg",
+  "Corrosive": "/ghs/ghs_005.jpg",
+  "Toxic": "/ghs/ghs_006.jpg",
+  "Harmful": "/ghs/ghs_007.jpg",
+  "Gas under pressure": "/ghs/ghs_008.jpg",
+  "Environmental hazard": "/ghs/ghs_009.jpg",
 };
 
 // ── Smart pagination: max 7 visible buttons with ellipsis ──

@@ -9,6 +9,7 @@ import { createProfile, getProfile } from "../../dashboard/dashboardSlice";
 const LoginForm: React.FC<{ formConfig: any[] }> = ({ formConfig }) => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"success" | "error">("success");
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -33,6 +34,7 @@ const LoginForm: React.FC<{ formConfig: any[] }> = ({ formConfig }) => {
 
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
+  setSubmitError(null);
 
   const newErrors: Record<string, string> = {};
 
@@ -139,11 +141,9 @@ const handleSubmit = async (e: React.FormEvent) => {
                            error?.message || 
                            "Invalid username and password");
 
-    setToastMessage(errorMessage);
-    setToastType("error");
-    
-    // Show alert as fallback for error message
-    alert(errorMessage);
+    // Show the reason inline above the Login button (e.g. "pending approval"
+    // or "Invalid username and password") instead of a popup alert.
+    setSubmitError(errorMessage);
   }
 };
 
@@ -165,6 +165,18 @@ const handleSubmit = async (e: React.FormEvent) => {
             totalFields={formConfig.length}
           />
         ))}
+
+        {submitError && (
+          <div className="col-12">
+            <div
+              className="alert alert-danger py-2 mb-2 w-100"
+              role="alert"
+              style={{ whiteSpace: "normal", wordBreak: "break-word" }}
+            >
+              {submitError}
+            </div>
+          </div>
+        )}
 
         <div className="col-12 btnWrapper">
           <button type="submit" className="btn btn-color">
