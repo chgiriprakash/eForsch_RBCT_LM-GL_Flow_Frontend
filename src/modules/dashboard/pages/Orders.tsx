@@ -364,7 +364,7 @@ const fetchPodeptData = async () => {
       const result = await dispatch(getCompanies()).unwrap();
       setCompanies(result);
       setCompanyOptions(
-        result.map((c: any) => ({ label: c.companyName, key: c.companyNo}))
+        result.map((c: any) => ({ label: c.companyName, key: c.companyName}))
       );
     } catch (error) {
       console.error("Failed to fetch companies:", error);
@@ -1215,6 +1215,22 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
   }
 };
 
+// Resolve a stored company value (which may be a company NUMBER on older/legacy
+// orders) back to the real company name using the loaded companies list.
+const resolveCompanyName = (raw: any): any => {
+  if (raw == null || raw === "") return raw;
+  const match = companies.find(
+    (c: any) => String(c.companyNo) === String(raw) || c.companyName === raw
+  );
+  return match ? match.companyName : raw;
+};
+
+// Build the grid rows with the Company column always showing the name.
+const displayList = (data?.list || []).map((row: any) => ({
+  ...row,
+  companyName: resolveCompanyName(row.companyName ?? row.companyname),
+}));
+
   // Apply the chosen date range and re-fetch the orders from the server.
   const handleApplyDateRange = (range: DateRange) => {
     setDateRange(range);
@@ -1268,7 +1284,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
           </div>
         </div>
         <div className={`dynamic-class ${userRole?.role === 'podept' ? 'podept' : ''}`}>
-          <DynamicTable data={data.list} columns={data.columns} pagination={data.pagination || defaultPagination} />
+          <DynamicTable data={displayList} columns={data.columns} pagination={data.pagination || defaultPagination} />
         </div>
         </>
       ) : (
@@ -1509,7 +1525,7 @@ const handleCompanyFieldChange = (id: string, value: any): Partial<Record<string
                 <div className="pd-card-header"><i className="fa fa-flask pd-card-icon" /><span>Product Info</span></div>
                 <div className="pd-fields">
                   {[
-                    { label: "Company",            value: viewOrderModal.order.companyName || viewOrderModal.order.companyname },
+                    { label: "Company",            value: resolveCompanyName(viewOrderModal.order.companyName || viewOrderModal.order.companyname) },
                     { label: "Catalogue No",        value: viewOrderModal.order.catalogue },
                     { label: "Quantity",            value: viewOrderModal.order.quantity },
                     { label: "Weight / Vol / Sub QTY", value: viewOrderModal.order.weightvolsubqty || viewOrderModal.order.weightVolSubQty },
