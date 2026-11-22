@@ -59,6 +59,7 @@ interface GroupData {
 
 interface AuthResponse {
   status: string;
+  message?: string;
   data: {
     token: string;
     user: User;
